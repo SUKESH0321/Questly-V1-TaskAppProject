@@ -1,14 +1,22 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, MapPin, Clock, Calendar, Star, Share2, Bookmark, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTaskStore } from "@/stores/taskStore";
+import { usePaymentStore } from "@/stores/paymentStore";
+import { PaymentModal } from "@/components/payments/PaymentModal";
+import { ReleasePaymentButton } from "@/components/payments/ReleasePaymentButton";
+import { EscrowBadge } from "@/components/shared/EscrowBadge";
 
 export default function TaskDetails() {
   const { id } = useParams();
   const { getTaskById } = useTaskStore();
   const task = id ? getTaskById(id) : undefined;
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const payment = usePaymentStore((s) => (task ? s.getPayment(task.id) : undefined));
 
   if (!task) {
     return (
@@ -30,9 +38,9 @@ export default function TaskDetails() {
       {/* Hero Image */}
       <div className="relative h-64 md:h-80 w-full bg-muted">
         {task.imageUrl ? (
-          <img 
-            src={task.imageUrl} 
-            alt={task.title} 
+          <img
+            src={task.imageUrl}
+            alt={task.title}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -59,7 +67,7 @@ export default function TaskDetails() {
 
       <div className="max-w-4xl mx-auto p-4 md:p-6 -mt-10 relative z-10">
         <div className="bg-card rounded-3xl shadow-xl shadow-primary/5 border border-border p-6 md:p-8">
-          
+
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -67,10 +75,11 @@ export default function TaskDetails() {
                 {task.status === "open" && (
                   <Badge variant="outline" className="text-amber-500 border-amber-500/30 bg-amber-500/5">Open</Badge>
                 )}
+                {payment && <EscrowBadge status={payment.status} />}
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">{task.title}</h1>
             </div>
-            
+
             <div className="text-left md:text-right">
               <div className="text-sm text-muted-foreground mb-1">Budget</div>
               <div className="text-3xl font-bold text-primary">${task.budget}</div>
@@ -88,7 +97,7 @@ export default function TaskDetails() {
                 <span className="text-xs text-primary font-medium mt-1 inline-block">{task.distance} away</span>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0">
                 <Calendar />
@@ -107,6 +116,33 @@ export default function TaskDetails() {
               <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
                 {task.description}
               </p>
+            </div>
+
+            {/* Payment / Escrow Section */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Payment</h2>
+              <div className="p-4 rounded-2xl border border-border bg-muted/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {!payment && "Payment hasn't been made for this task yet."}
+                    {payment?.status === "pending" && "Payment is being processed."}
+                    {payment?.status === "held" && "Payment is held in escrow until the task is completed."}
+                    {payment?.status === "released" && "Payment has been released to the tasker."}
+                    {payment?.status === "refunded" && "Payment was refunded."}
+                    {payment?.status === "disputed" && "Payment is under dispute."}
+                  </p>
+                </div>
+
+                {!payment && (
+                  <Button onClick={() => setPaymentModalOpen(true)}>
+                    Pay & Confirm ${task.budget}
+                  </Button>
+                )}
+
+                {payment?.status === "held" && (
+                  <ReleasePaymentButton taskId={task.id} />
+                )}
+              </div>
             </div>
 
             <div>
@@ -137,7 +173,7 @@ export default function TaskDetails() {
                 <Button variant="outline" size="sm">View Profile</Button>
               </div>
             </div>
-            
+
             {/* Map Placeholder */}
             <div>
               <h2 className="text-xl font-bold mb-4">Map</h2>
@@ -156,7 +192,7 @@ export default function TaskDetails() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-card/80 backdrop-blur-md border-t border-border z-50 md:hidden">
         <Button size="lg" className="w-full text-lg shadow-lg shadow-primary/25">Apply for ${task.budget}</Button>
       </div>
-      
+
       {/* Desktop Apply Action */}
       <div className="hidden md:block fixed bottom-8 right-8 z-50">
         <Button size="lg" className="rounded-full px-8 py-6 text-lg shadow-xl shadow-primary/30 flex items-center gap-2 hover:scale-105 transition-transform">
@@ -164,6 +200,13 @@ export default function TaskDetails() {
           Apply for Task
         </Button>
       </div>
+
+      <PaymentModal
+        taskId={task.id}
+        amount={task.budget}
+        open={paymentModalOpen}
+        onOpenChange={setPaymentModalOpen}
+      />
     </div>
   );
 }
