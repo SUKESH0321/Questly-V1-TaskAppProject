@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import api from "@/lib/api";
 import type { EscrowStatus, Payment } from "@/types/payment";
 
 interface PaymentState {
@@ -11,73 +12,43 @@ interface PaymentState {
   getPayment: (taskId: string) => Payment | undefined;
 }
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export const usePaymentStore = create<PaymentState>((set, get) => ({
   payments: {},
 
-  initiatePayment: async (taskId, amount) => {
-    const newPayment: Payment = {
-      id: crypto.randomUUID(),
-      taskId,
-      amount,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-    set((state) => ({
-      payments: { ...state.payments, [taskId]: newPayment },
-    }));
-
-    // stand-in for the real gateway's processing time
-    await delay(1200);
-
-    set((state) => ({
-      payments: {
-        ...state.payments,
-        [taskId]: { ...state.payments[taskId], status: "held" as EscrowStatus },
-      },
-    }));
+  initiatePayment: async (taskId, _amount) => {
+    try {
+      const res = await api.post("/payments/initiate", { taskId });
+      const payment = res.data.payment;
+      set((state) => ({
+        payments: { ...state.payments, [taskId]: payment },
+      }));
+    } catch (err) {
+      console.error("Payment initiation failed", err);
+      throw err;
+    }
   },
 
   releasePayment: async (taskId) => {
-    await delay(800);
-    set((state) => {
-      const existing = state.payments[taskId];
-      if (!existing) return state;
-      return {
-        payments: {
-          ...state.payments,
-          [taskId]: {
-            ...existing,
-            status: "released",
-            releasedAt: new Date().toISOString(),
-          },
-        },
-      };
-    });
+    try {
+      const res = await api.post(`/payments/release/${taskId}`);
+      const payment = res.data.payment;
+      set((state) => ({
+        payments: { ...state.payments, [taskId]: payment },
+      }));
+    } catch (err) {
+      console.error("Payment release failed", err);
+      throw err;
+    }
   },
 
-  refundPayment: async (taskId) => {
-    await delay(800);
-    set((state) => {
-      const existing = state.payments[taskId];
-      if (!existing) return state;
-      return {
-        payments: { ...state.payments, [taskId]: { ...existing, status: "refunded" } },
-      };
-    });
+  refundPayment: async (_taskId) => {
+    // Backend refund endpoint can be added later
+    console.warn("Refund not implemented on backend yet");
   },
 
-  disputePayment: (taskId) => {
-    set((state) => {
-      const existing = state.payments[taskId];
-      if (!existing) return state;
-      return {
-        payments: { ...state.payments, [taskId]: { ...existing, status: "disputed" } },
-      };
-    });
+  disputePayment: (_taskId) => {
+    // Backend dispute endpoint can be added later
+    console.warn("Dispute not implemented on backend yet");
   },
 
   getPayment: (taskId) => get().payments[taskId],

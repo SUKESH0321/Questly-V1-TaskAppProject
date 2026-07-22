@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Map as MapIcon, List, Filter, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import type { TaskFilters } from "@/stores/taskStore";
 
 export default function BrowseTasks() {
   const navigate = useNavigate();
-  const { filterTasks } = useTaskStore();
+  const { tasks, fetchTasks, isLoading, filterTasks } = useTaskStore();
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [showFilters, setShowFilters] = useState(false);
   
@@ -25,6 +25,11 @@ export default function BrowseTasks() {
   });
 
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(["All"]));
+
+  // Fetch tasks from backend on mount
+  useEffect(() => {
+    fetchTasks(filters);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredTasks = useMemo(() => {
     return filterTasks(filters);
@@ -247,7 +252,7 @@ export default function BrowseTasks() {
                     <TaskCard
                       title={task.title}
                       category={task.category}
-                      budget={`$${task.budget}`}
+                      budget={`₹${task.budget}`}
                       distance={task.distance}
                       time={task.time}
                       rating={task.rating}
@@ -275,7 +280,7 @@ export default function BrowseTasks() {
                   }}
                 >
                   <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg transform -translate-x-1/2 -translate-y-full text-xs font-bold">
-                    ${task.budget}
+                    ₹{task.budget}
                   </div>
                   <div className="w-3 h-3 bg-primary rounded-full absolute -bottom-1 left-1/2 transform -translate-x-1/2"></div>
                 </div>

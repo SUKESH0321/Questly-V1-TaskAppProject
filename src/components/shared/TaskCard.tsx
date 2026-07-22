@@ -46,7 +46,7 @@ export default function TaskCard({ title, category, budget, distance, time, rati
             </div>
             <div className="flex items-center gap-1 text-amber-500">
               <Star size={16} className="fill-current" />
-              <span className="font-medium">{rating.toFixed(1)}</span>
+              <span className="font-medium">{rating ? rating.toFixed(1) : "0.0"}</span>
             </div>
           </div>
         </div>

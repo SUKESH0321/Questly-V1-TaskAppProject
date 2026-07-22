@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Bell,
   CheckCircle2,
@@ -12,6 +11,7 @@ import {
   Settings,
   ChevronRight,
 } from "lucide-react";
+import api from "@/lib/api";
 
 interface Notification {
   id: string;
@@ -22,91 +22,50 @@ interface Notification {
   read: boolean;
 }
 
-const DUMMY_NOTIFICATIONS: Notification[] = [
-  {
-    id: "notif-1",
-    type: "application",
-    title: "New application received",
-    description: "Sarah Jenkins applied for your 'Deep Clean 2BHK' task",
-    time: "2 minutes ago",
-    read: false,
-  },
-  {
-    id: "notif-2",
-    type: "message",
-    title: "New message from Michael",
-    description: "Michael Chen sent you a message about the cleaning task",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: "notif-3",
-    type: "payment",
-    title: "Payment confirmed",
-    description: "$50 payment for 'Assemble IKEA Wardrobe' has been released",
-    time: "3 hours ago",
-    read: false,
-  },
-  {
-    id: "notif-4",
-    type: "review",
-    title: "New review received",
-    description: "Emily Rodriguez left you a 5-star review!",
-    time: "5 hours ago",
-    read: true,
-  },
-  {
-    id: "notif-5",
-    type: "status",
-    title: "Task marked as complete",
-    description: "'Deliver Documents to Downtown' has been completed",
-    time: "Yesterday",
-    read: true,
-  },
-  {
-    id: "notif-6",
-    type: "system",
-    title: "Profile verification approved",
-    description: "Your identity verification has been approved. You can now accept tasks!",
-    time: "2 days ago",
-    read: true,
-  },
-  {
-    id: "notif-7",
-    type: "application",
-    title: "Task request accepted",
-    description: "David Kim accepted your request for 'Fix Leaking Kitchen Sink'",
-    time: "3 days ago",
-    read: true,
-  },
-  {
-    id: "notif-8",
-    type: "system",
-    title: "Welcome to Questly!",
-    description: "Thanks for joining! Complete your profile to get started.",
-    time: "1 week ago",
-    read: true,
-  },
-];
-
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(DUMMY_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredNotifs = filter === "all" 
-    ? notifications 
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get("/notifications");
+      setNotifications(res.data.notifications);
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const filteredNotifs = filter === "all"
+    ? notifications
     : notifications.filter((n) => !n.read);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      await api.patch("/notifications/read-all");
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
+    }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
   };
 
   const getIcon = (type: Notification["type"]) => {
@@ -150,7 +109,7 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {unreadCount > 0 ? `You have ${unreadCount} unread notifications` : "All caught up!"}
+            {isLoading ? "" : unreadCount > 0 ? `You have ${unreadCount} unread notifications` : "All caught up!"}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -190,7 +149,19 @@ export default function NotificationsPage() {
       </div>
 
       {/* Notification List */}
-      {filteredNotifs.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-start gap-4 p-4 rounded-xl animate-pulse">
+              <div className="w-10 h-10 rounded-full bg-muted flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-muted rounded w-1/3" />
+                <div className="h-3 bg-muted rounded w-2/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredNotifs.length === 0 ? (
         <div className="bg-muted/50 rounded-2xl p-12 text-center border border-border">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
             <Bell size={32} className="text-muted-foreground" />

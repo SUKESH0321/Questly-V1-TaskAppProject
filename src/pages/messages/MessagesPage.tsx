@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Send, Phone, Video, MoreHorizontal, ArrowLeft, Paperclip } from "lucide-react";
+import api from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
 
-interface Message {
+interface ChatMessage {
   id: string;
   text: string;
   sender: "me" | "them";
@@ -15,85 +17,105 @@ interface Message {
 
 interface Conversation {
   id: string;
-  name: string;
-  avatar?: string;
+  otherUser: { id: string; name: string; avatar?: string } | null;
   lastMessage: string;
   lastTime: string;
-  unread: number;
-  online: boolean;
-  messages: Message[];
+  messages: ChatMessage[];
 }
-
-const DUMMY_CONVERSATIONS: Conversation[] = [
-  {
-    id: "conv-1",
-    name: "Sarah Jenkins",
-    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-    lastMessage: "Sure, I can help with that! When are you available?",
-    lastTime: "2m ago",
-    unread: 2,
-    online: true,
-    messages: [
-      { id: "m1", text: "Hi! I saw your task about deep cleaning.", sender: "them", time: "2:15 PM" },
-      { id: "m2", text: "Yes, I need it done this weekend.", sender: "me", time: "2:16 PM" },
-      { id: "m3", text: "Sure, I can help with that! When are you available?", sender: "them", time: "2:18 PM" },
-    ],
-  },
-  {
-    id: "conv-2",
-    name: "Michael Chen",
-    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704e",
-    lastMessage: "I'll bring my own cleaning supplies",
-    lastTime: "1h ago",
-    unread: 0,
-    online: false,
-    messages: [
-      { id: "m4", text: "Hello! I'm interested in the cleaning task.", sender: "them", time: "1:00 PM" },
-      { id: "m5", text: "Great! Do you have equipment?", sender: "me", time: "1:05 PM" },
-      { id: "m6", text: "I'll bring my own cleaning supplies", sender: "them", time: "1:10 PM" },
-    ],
-  },
-  {
-    id: "conv-3",
-    name: "Emily Rodriguez",
-    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f",
-    lastMessage: "Perfect, see you tomorrow!",
-    lastTime: "3h ago",
-    unread: 1,
-    online: true,
-    messages: [
-      { id: "m7", text: "The delivery will be ready by 9 AM.", sender: "them", time: "11:00 AM" },
-      { id: "m8", text: "Perfect, see you tomorrow!", sender: "me", time: "11:05 AM" },
-    ],
-  },
-  {
-    id: "conv-4",
-    name: "David Kim",
-    avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704g",
-    lastMessage: "I can fix the sink tomorrow afternoon",
-    lastTime: "Yesterday",
-    unread: 0,
-    online: false,
-    messages: [
-      { id: "m9", text: "I can fix the sink tomorrow afternoon", sender: "them", time: "Yesterday" },
-      { id: "m10", text: "That works for me!", sender: "me", time: "Yesterday" },
-    ],
-  },
-];
 
 export default function MessagesPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredConversations = DUMMY_CONVERSATIONS.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const fetchConversations = useCallback(async () => {
+    try {
+      const res = await api.get("/conversations");
+      const convs = res.data.conversations.map((c: any) => ({
+        id: c.id,
+        otherUser: c.otherUser,
+        lastMessage: c.lastMessage,
+        lastTime: c.lastTime,
+        messages: [],
+      }));
+      setConversations(convs);
+    } catch (err) {
+      console.error("Failed to fetch conversations", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  const fetchMessages = useCallback(async (convId: string) => {
+    try {
+      const res = await api.get(`/conversations/${convId}/messages`);
+      const msgs = res.data.messages.map((m: any) => ({
+        id: m.id,
+        text: m.text,
+        sender: m.senderId === user?.id ? "me" : "them" as "me" | "them",
+        time: m.time,
+      }));
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId ? { ...c, messages: msgs } : c
+        )
+      );
+      return msgs;
+    } catch (err) {
+      console.error("Failed to fetch messages", err);
+      return [];
+    }
+  }, [user?.id]);
+
+  const handleSelectConversation = async (conv: Conversation) => {
+    setSelectedConv(conv);
+    setShowChat(true);
+    // Fetch messages for this conversation
+    if (conv.messages.length === 0) {
+      const msgs = await fetchMessages(conv.id);
+      setSelectedConv((prev) => prev ? { ...prev, messages: msgs } : null);
+    }
+  };
+
+  const filteredConversations = conversations.filter((c) =>
+    c.otherUser?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedConv) return;
-    setMessageInput("");
+    try {
+      const res = await api.post(`/conversations/${selectedConv.id}/messages`, {
+        text: messageInput.trim(),
+      });
+      const newMsg = res.data.message;
+      const chatMsg: ChatMessage = {
+        id: newMsg.id,
+        text: newMsg.text,
+        sender: "me",
+        time: newMsg.time,
+      };
+      setSelectedConv((prev) =>
+        prev ? { ...prev, messages: [...prev.messages, chatMsg] } : null
+      );
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedConv.id
+            ? { ...c, lastMessage: newMsg.text, lastTime: newMsg.time }
+            : c
+        )
+      );
+      setMessageInput("");
+    } catch (err) {
+      console.error("Failed to send message", err);
+    }
   };
 
   const initials = (name: string) =>
@@ -105,11 +127,6 @@ export default function MessagesPage() {
 
   // Mobile: show conversation list or chat
   const [showChat, setShowChat] = useState(false);
-
-  const handleSelectConversation = (conv: Conversation) => {
-    setSelectedConv(conv);
-    setShowChat(true);
-  };
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
@@ -131,7 +148,19 @@ export default function MessagesPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto divide-y divide-border">
-          {filteredConversations.length === 0 ? (
+          {isLoading ? (
+            <div className="p-8 space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 animate-pulse">
+                  <div className="w-12 h-12 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-muted rounded w-1/3" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredConversations.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <p>No conversations found</p>
             </div>
@@ -146,25 +175,18 @@ export default function MessagesPage() {
               >
                 <div className="relative">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={conv.avatar} />
-                    <AvatarFallback>{initials(conv.name)}</AvatarFallback>
+                    <AvatarImage src={conv.otherUser?.avatar} />
+                    <AvatarFallback>{conv.otherUser ? initials(conv.otherUser.name) : "?"}</AvatarFallback>
                   </Avatar>
-                  {conv.online && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-accent rounded-full border-2 border-card"></span>
-                  )}
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-accent rounded-full border-2 border-card"></span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-semibold text-foreground truncate">{conv.name}</h3>
+                    <h3 className="font-semibold text-foreground truncate">{conv.otherUser?.name || "Unknown"}</h3>
                     <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">{conv.lastTime}</span>
                   </div>
                   <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
                 </div>
-                {conv.unread > 0 && (
-                  <Badge className="bg-primary text-primary-foreground rounded-full min-w-[20px] h-5 flex items-center justify-center text-xs">
-                    {conv.unread}
-                  </Badge>
-                )}
               </button>
             ))
           )}
@@ -186,14 +208,12 @@ export default function MessagesPage() {
                 <ArrowLeft size={20} />
               </Button>
               <Avatar className="h-10 w-10">
-                <AvatarImage src={selectedConv.avatar} />
-                <AvatarFallback>{initials(selectedConv.name)}</AvatarFallback>
+                <AvatarImage src={selectedConv.otherUser?.avatar} />
+                <AvatarFallback>{selectedConv.otherUser ? initials(selectedConv.otherUser.name) : "?"}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground">{selectedConv.name}</h3>
-                <p className="text-xs text-muted-foreground">
-                  {selectedConv.online ? "Online" : "Offline"}
-                </p>
+                <h3 className="font-semibold text-foreground">{selectedConv.otherUser?.name || "Unknown"}</h3>
+                <p className="text-xs text-muted-foreground">Online</p>
               </div>
               <Button variant="ghost" size="icon">
                 <Phone size={18} />
@@ -208,29 +228,35 @@ export default function MessagesPage() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/20">
-              {selectedConv.messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}
-                >
+              {selectedConv.messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No messages yet. Start a conversation!
+                </div>
+              ) : (
+                selectedConv.messages.map((msg) => (
                   <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                      msg.sender === "me"
-                        ? "bg-primary text-primary-foreground rounded-br-sm"
-                        : "bg-card text-foreground border border-border rounded-bl-sm"
-                    }`}
+                    key={msg.id}
+                    className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}
                   >
-                    <p className="text-sm">{msg.text}</p>
-                    <p
-                      className={`text-[10px] mt-1 ${
-                        msg.sender === "me" ? "text-primary-foreground/70" : "text-muted-foreground"
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                        msg.sender === "me"
+                          ? "bg-primary text-primary-foreground rounded-br-sm"
+                          : "bg-card text-foreground border border-border rounded-bl-sm"
                       }`}
                     >
-                      {msg.time}
-                    </p>
+                      <p className="text-sm">{msg.text}</p>
+                      <p
+                        className={`text-[10px] mt-1 ${
+                          msg.sender === "me" ? "text-primary-foreground/70" : "text-muted-foreground"
+                        }`}
+                      >
+                        {msg.time}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Message Input */}
