@@ -218,7 +218,7 @@ export default function CreateTask() {
                 onClick={() => updateField("budget", 85)}
               >
                 <Badge className="absolute top-2 right-2 bg-accent/20 text-accent hover:bg-accent/20">Suggested</Badge>
-                <div className="text-3xl font-bold text-primary mb-2">$85</div>
+                <div className="text-3xl font-bold text-primary mb-2">₹85</div>
                 <div className="text-sm font-medium text-foreground">Estimated Fair Price</div>
                 <div className="text-xs text-muted-foreground mt-1">Based on similar tasks</div>
               </div>
@@ -284,7 +284,7 @@ export default function CreateTask() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Budget</div>
-                  <div className="font-medium text-primary">${formData.budget}</div>
+                  <div className="font-medium text-primary">₹{formData.budget}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Location</div>

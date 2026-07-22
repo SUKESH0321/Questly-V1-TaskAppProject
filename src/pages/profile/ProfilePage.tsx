@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useTaskStore } from "@/stores/taskStore";
 import { Button } from "@/components/ui/button";
@@ -24,14 +24,19 @@ import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuthStore();
-  const { tasks } = useTaskStore();
+  const { tasks, fetchTasks, isLoading } = useTaskStore();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || "");
   const [editPhone, setEditPhone] = useState(user?.phone || "");
   const [editLocation, setEditLocation] = useState(user?.location || "");
 
-  const userTasks = tasks.filter((t) => t.posterName === "You");
+  // Fetch tasks on mount
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  const userTasks = tasks.filter((t) => t.posterId === user?.id);
   const completedTasks = userTasks.filter((t) => t.status === "completed");
   const activeTasks = userTasks.filter((t) => t.status === "open");
 
@@ -147,7 +152,7 @@ export default function ProfilePage() {
             <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent mb-2">
               <DollarSign size={20} />
             </div>
-            <span className="text-2xl font-bold">$0</span>
+            <span className="text-2xl font-bold">₹0</span>
             <span className="text-xs text-muted-foreground">Earned</span>
           </CardContent>
         </Card>
@@ -182,7 +187,7 @@ export default function ProfilePage() {
               >
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-foreground truncate">{task.title}</h3>
-                  <p className="text-sm text-muted-foreground">{task.category} • ${task.budget}</p>
+                  <p className="text-sm text-muted-foreground">{task.category} • ₹{task.budget}</p>
                 </div>
                 <Badge
                   className={

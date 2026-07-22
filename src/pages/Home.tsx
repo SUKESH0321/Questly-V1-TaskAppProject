@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { 
   Sparkles, 
@@ -20,8 +21,13 @@ import { useTaskStore } from "@/stores/taskStore";
 
 export default function Home() {
   const { user } = useAuthStore();
-  const { tasks } = useTaskStore();
+  const { tasks, fetchTasks, isLoading } = useTaskStore();
   const navigate = useNavigate();
+
+  // Fetch tasks on mount
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
   const categories = [
     { name: "Cleaning", icon: Brush, count: 124 },
     { name: "Repairs", icon: Wrench, count: 85 },
@@ -30,43 +36,8 @@ export default function Home() {
     { name: "Gardening", icon: Leaf, count: 67 },
   ];
 
-  const recentTasks = [
-    {
-      title: "Assemble IKEA Wardrobe",
-      category: "Furniture Assembly",
-      budget: "$50",
-      distance: "1.2 miles away",
-      time: "Today, 2:00 PM",
-      rating: 4.8,
-      imageUrl: "https://images.unsplash.com/photo-1595514535415-3bdc1b4d081e?q=80&w=600&auto=format&fit=crop"
-    },
-    {
-      title: "Deep Clean 2BHK Apartment",
-      category: "Cleaning",
-      budget: "$120",
-      distance: "0.8 miles away",
-      time: "Tomorrow, 9:00 AM",
-      rating: 5.0,
-      imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=600&auto=format&fit=crop"
-    },
-    {
-      title: "Deliver Documents to Downtown",
-      category: "Delivery",
-      budget: "$25",
-      distance: "3.5 miles away",
-      time: "Within 2 hours",
-      rating: 4.5,
-    },
-    {
-      title: "Fix Leaking Kitchen Sink",
-      category: "Plumbing",
-      budget: "$80",
-      distance: "2.1 miles away",
-      time: "Today, Any time",
-      rating: 4.9,
-      imageUrl: "https://images.unsplash.com/photo-1607472586893-edb57cb640d2?q=80&w=600&auto=format&fit=crop"
-    }
-  ];
+  // Use tasks from store (fetched from backend)
+  const displayTasks = tasks.slice(0, 4);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-10">
@@ -123,11 +94,28 @@ export default function Home() {
           </Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {recentTasks.map((task, i) => (
-            <TaskCard key={i} {...task} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-48 bg-muted rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {displayTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                title={task.title}
+                category={task.category}
+                budget={`₹${task.budget}`}
+                distance={task.distance}
+                time={task.time}
+                rating={task.rating}
+                imageUrl={task.imageUrl}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Banner */}

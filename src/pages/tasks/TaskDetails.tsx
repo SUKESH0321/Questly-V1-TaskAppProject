@@ -1,24 +1,72 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, MapPin, Clock, Calendar, Star, Share2, Bookmark, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useTaskStore } from "@/stores/taskStore";
+import api from "@/lib/api";
 import { usePaymentStore } from "@/stores/paymentStore";
 import { PaymentModal } from "@/components/payments/PaymentModal";
 import { ReleasePaymentButton } from "@/components/payments/ReleasePaymentButton";
 import { EscrowBadge } from "@/components/shared/EscrowBadge";
 
+interface Task {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  budget: number;
+  location: string;
+  distance: string;
+  time: string;
+  date: string;
+  imageUrl?: string;
+  status: string;
+  posterName: string;
+  posterAvatar?: string;
+  posterRating: number;
+}
+
 export default function TaskDetails() {
   const { id } = useParams();
-  const { getTaskById } = useTaskStore();
-  const task = id ? getTaskById(id) : undefined;
+  const [task, setTask] = useState<Task | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const payment = usePaymentStore((s) => (task ? s.getPayment(task.id) : undefined));
 
-  if (!task) {
+  useEffect(() => {
+    if (!id) {
+      setError("No task ID provided");
+      setIsLoading(false);
+      return;
+    }
+    const fetchTask = async () => {
+      try {
+        const res = await api.get(`/tasks/${id}`);
+        setTask(res.data.task);
+      } catch (err) {
+        setError("Task not found");
+        console.error("Failed to fetch task", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTask();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
+        <div className="w-16 h-16 rounded-full bg-muted animate-pulse mb-4" />
+        <div className="h-6 bg-muted rounded w-48 animate-pulse mb-2" />
+        <div className="h-4 bg-muted rounded w-64 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (error || !task) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
         <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -82,7 +130,7 @@ export default function TaskDetails() {
 
             <div className="text-left md:text-right">
               <div className="text-sm text-muted-foreground mb-1">Budget</div>
-              <div className="text-3xl font-bold text-primary">${task.budget}</div>
+              <div className="text-3xl font-bold text-primary">₹{task.budget}</div>
             </div>
           </div>
 
@@ -135,7 +183,7 @@ export default function TaskDetails() {
 
                 {!payment && (
                   <Button onClick={() => setPaymentModalOpen(true)}>
-                    Pay & Confirm ${task.budget}
+                    Pay & Confirm ₹{task.budget}
                   </Button>
                 )}
 
@@ -190,7 +238,7 @@ export default function TaskDetails() {
 
       {/* Floating Apply Action */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-card/80 backdrop-blur-md border-t border-border z-50 md:hidden">
-        <Button size="lg" className="w-full text-lg shadow-lg shadow-primary/25">Apply for ${task.budget}</Button>
+        <Button size="lg" className="w-full text-lg shadow-lg shadow-primary/25">Apply for ₹{task.budget}</Button>
       </div>
 
       {/* Desktop Apply Action */}
