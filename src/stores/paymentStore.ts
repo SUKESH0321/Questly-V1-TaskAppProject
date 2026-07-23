@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import api from "@/lib/api";
-import type { EscrowStatus, Payment } from "@/types/payment";
+import type { Payment } from "@/types/payment";
 
 interface PaymentState {
   payments: Record<string, Payment>; // keyed by taskId

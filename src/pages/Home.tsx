@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { 
   Sparkles, 
   MapPin, 
@@ -48,7 +48,7 @@ export default function Home() {
             <Sparkles className="text-primary h-5 w-5" />
             <span className="text-primary font-medium tracking-wide text-sm uppercase">Welcome back</span>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Hello, Sukesh!</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Hello, {user?.name || "Sukesh"}!</h2>
           <p className="text-muted-foreground">Ready to get things done today?</p>
         </div>
         <div className="flex gap-4 w-full md:w-auto">

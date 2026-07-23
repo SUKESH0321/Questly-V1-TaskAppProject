@@ -10,7 +10,7 @@ import type { TaskFilters } from "@/stores/taskStore";
 
 export default function BrowseTasks() {
   const navigate = useNavigate();
-  const { tasks, fetchTasks, isLoading, filterTasks } = useTaskStore();
+  const { fetchTasks, filterTasks } = useTaskStore();
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [showFilters, setShowFilters] = useState(false);
   

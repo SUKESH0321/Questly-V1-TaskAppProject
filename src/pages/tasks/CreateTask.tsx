@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Check, Upload, MapPin, Map, Calendar, DollarSign, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useTaskStore } from "@/stores/taskStore";
+import { useAuthStore } from "@/stores/authStore";
 
 const steps = [
   "Details",
@@ -29,6 +30,7 @@ export default function CreateTask() {
   const [currentStep, setCurrentStep] = useState(0);
   const navigate = useNavigate();
   const { addTask } = useTaskStore();
+  const { user } = useAuthStore();
 
   const [formData, setFormData] = useState<TaskFormData>({
     title: "",
@@ -58,6 +60,7 @@ export default function CreateTask() {
         time: formData.time,
         date: formData.date || new Date().toISOString().split("T")[0],
         imageUrl: undefined,
+        posterId: user?.id || "user-1",
       });
       navigate("/tasks/success");
     }

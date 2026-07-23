@@ -24,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuthStore();
-  const { tasks, fetchTasks, isLoading } = useTaskStore();
+  const { tasks, fetchTasks } = useTaskStore();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || "");

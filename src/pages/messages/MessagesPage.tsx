@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Send, Phone, Video, MoreHorizontal, ArrowLeft, Paperclip } from "lucide-react";
@@ -24,7 +22,6 @@ interface Conversation {
 }
 
 export default function MessagesPage() {
-  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
