@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
-import { users } from "../data/store.js";
+import { User } from "../models/User.js";
+import { generateToken } from "../middleware/auth.js";
 
-export function register(req: Request, res: Response) {
+export async function register(req: Request, res: Response) {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
@@ -9,30 +10,36 @@ export function register(req: Request, res: Response) {
     return;
   }
 
-  const existing = users.find((u) => u.email === email);
+  const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) {
     res.status(409).json({ error: "A user with this email already exists." });
     return;
   }
 
-  const newUser = {
-    id: `user-${Date.now()}`,
+  const newUser = new User({
     name,
     email,
-    password, // In production: hash the password
-    role: null as "customer" | "tasker" | "both" | null,
+    password,
+    role: null,
     rating: 5.0,
-    createdAt: new Date().toISOString(),
-  };
+  });
 
-  users.push(newUser);
+  await newUser.save();
+  const token = generateToken(String(newUser._id));
 
   res.status(201).json({
-    user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role, rating: newUser.rating },
+    user: {
+      id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      rating: newUser.rating,
+    },
+    token,
   });
 }
 
-export function login(req: Request, res: Response) {
+export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -40,26 +47,48 @@ export function login(req: Request, res: Response) {
     return;
   }
 
-  const user = users.find((u) => u.email === email);
-  if (!user || user.password !== password) {
-    // In production: compare hashed passwords
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
     res.status(401).json({ error: "Invalid email or password." });
     return;
   }
 
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    res.status(401).json({ error: "Invalid email or password." });
+    return;
+  }
+
+  const token = generateToken(String(user._id));
+
   res.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, rating: user.rating },
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      rating: user.rating,
+    },
+    token,
   });
 }
 
-export function getMe(req: Request, res: Response) {
-  const user = users.find((u) => u.id === req.userId);
+export async function getMe(req: Request, res: Response) {
+  const user = await User.findById(req.userId);
   if (!user) {
     res.status(404).json({ error: "User not found." });
     return;
   }
 
   res.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, location: user.location, rating: user.rating },
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      location: user.location,
+      rating: user.rating,
+    },
   });
 }

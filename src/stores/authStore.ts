@@ -37,7 +37,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await api.post("/auth/login", { email, password });
-      const user = res.data.user;
+      const { user, token } = res.data;
+      localStorage.setItem("questly_token", token);
       localStorage.setItem("questly_user_id", user.id);
       set({
         user,
@@ -58,7 +59,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await api.post("/auth/register", { name, email, password });
-      const user = res.data.user;
+      const { user, token } = res.data;
+      localStorage.setItem("questly_token", token);
       localStorage.setItem("questly_user_id", user.id);
       set({
         user,
@@ -82,6 +84,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
+    localStorage.removeItem("questly_token");
     localStorage.removeItem("questly_user_id");
     set({ user: null, isAuthenticated: false });
   },
@@ -93,14 +96,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   fetchUser: async () => {
-    const userId = localStorage.getItem("questly_user_id");
-    if (!userId) return;
+    const token = localStorage.getItem("questly_token");
+    if (!token) return;
 
     try {
       const res = await api.get("/auth/me");
       const user = res.data.user;
       set({ user, isAuthenticated: true });
     } catch {
+      localStorage.removeItem("questly_token");
       localStorage.removeItem("questly_user_id");
       set({ user: null, isAuthenticated: false });
     }
