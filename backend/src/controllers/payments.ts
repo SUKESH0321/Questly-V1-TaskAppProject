@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
-import { payments, tasks } from "../data/store.js";
+import { Payment } from "../models/Payment.js";
+import { Task } from "../models/Task.js";
 
-export function initiatePayment(req: Request, res: Response) {
+export async function initiatePayment(req: Request, res: Response) {
   const { taskId } = req.body;
 
   if (!taskId) {
@@ -9,55 +10,58 @@ export function initiatePayment(req: Request, res: Response) {
     return;
   }
 
-  const task = tasks.find((t) => t.id === taskId);
+  const task = await Task.findById(taskId);
   if (!task) {
     res.status(404).json({ error: "Task not found." });
     return;
   }
 
-  const existing = payments.find((p) => p.taskId === taskId);
+  const existing = await Payment.findOne({ taskId });
   if (existing) {
     res.status(409).json({ error: "Payment already initiated for this task." });
     return;
   }
 
-  const newPayment = {
-    id: `pay-${Date.now()}`,
+  const newPayment = new Payment({
     taskId,
     payerId: req.userId!,
     payeeId: task.posterId,
     amount: task.budget,
-    status: "held" as const,
-    createdAt: new Date().toISOString(),
-  };
+    status: "held",
+  });
 
-  payments.push(newPayment);
-  res.status(201).json({ payment: newPayment });
+  await newPayment.save();
+
+  res.status(201).json({ payment: newPayment.toObject() });
 }
 
-export function releasePayment(req: Request, res: Response) {
-  const payment = payments.find((p) => p.taskId === req.params.taskId);
+export async function releasePayment(req: Request, res: Response) {
+  const payment = await Payment.findOne({ taskId: req.params.taskId });
   if (!payment) {
     res.status(404).json({ error: "Payment not found for this task." });
     return;
   }
 
   if (payment.status !== "held") {
-    res.status(400).json({ error: `Cannot release a payment that is ${payment.status}.` });
+    res
+      .status(400)
+      .json({ error: `Cannot release a payment that is ${payment.status}.` });
     return;
   }
 
   payment.status = "released";
-  payment.releasedAt = new Date().toISOString();
+  payment.releasedAt = new Date();
+  await payment.save();
 
-  res.json({ payment });
+  res.json({ payment: payment.toObject() });
 }
 
-export function getPayment(req: Request, res: Response) {
-  const payment = payments.find((p) => p.taskId === req.params.taskId);
+export async function getPayment(req: Request, res: Response) {
+  const payment = await Payment.findOne({ taskId: req.params.taskId }).lean();
   if (!payment) {
     res.status(404).json({ error: "Payment not found for this task." });
     return;
   }
+
   res.json({ payment });
 }

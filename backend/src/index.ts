@@ -1,5 +1,8 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { connectDB } from "./config/db.js";
+import { seedDatabase } from "./config/seed.js";
 import authRoutes from "./routes/auth.js";
 import taskRoutes from "./routes/tasks.js";
 import paymentRoutes from "./routes/payments.js";
@@ -26,7 +29,14 @@ app.get("/api/health", (_req, res) => {
 });
 
 // ---------- Start ----------
-app.listen(PORT, () => {
-  console.log(`Questly API server running at http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
-});
+async function start() {
+  await connectDB();
+  await seedDatabase();
+
+  app.listen(PORT, () => {
+    console.log(`Questly API server running at http://localhost:${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/api/health`);
+  });
+}
+
+start();

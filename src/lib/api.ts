@@ -7,11 +7,11 @@ const api = axios.create({
   },
 });
 
-// Attach the user id from localStorage as x-user-id header automatically
+// Attach the JWT token from localStorage as Bearer token automatically
 api.interceptors.request.use((config) => {
-  const userId = localStorage.getItem("questly_user_id");
-  if (userId) {
-    config.headers["x-user-id"] = userId;
+  const token = localStorage.getItem("questly_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });

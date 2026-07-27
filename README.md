@@ -1,13 +1,15 @@
 # Questly
 
-A hyperlocal task marketplace application for posting, browsing, and managing local tasks. Built with React, TypeScript, and Vite (frontend) and Express (backend).
+A hyperlocal task marketplace application for posting, browsing, and managing local tasks. Built with React, TypeScript, and Vite (frontend) and Express + MongoDB (backend).
 
 ---
 
 ## Features
 
 - **Full Frontend-Backend Integration** — All pages fetch real data from an Express API server (auth, tasks, messages, notifications, payments) instead of using mock data.
-- **Authentication Flow** — Login, registration, role selection (Customer / Tasker / Both), and a multi-step tasker onboarding wizard. Sessions persist via API-backed user IDs stored in localStorage.
+- **MongoDB Database** — All data is persisted in MongoDB using Mongoose ODM. Includes automatic seeding of demo data on first run.
+- **JWT Authentication** — Secure login and registration with bcrypt password hashing and JSON Web Token (JWT) based sessions. Tokens are stored in localStorage and sent as Bearer tokens.
+- **Authentication Flow** — Login, registration, role selection (Customer / Tasker / Both), and a multi-step tasker onboarding wizard.
 - **Task Management** — Create tasks via a step-by-step wizard (Details, Photos, Location, Budget, Time, Preview), browse tasks with search and filters, view task details, and track posted tasks.
 - **Advanced Filtering** — Search by keyword, filter by category, budget range, distance radius, minimum rating, and sort by date, price, or distance.
 - **Messaging** — Chat interface with conversation list, online indicators, and message bubbles. Real conversations and messages loaded from the API.
@@ -39,6 +41,8 @@ A hyperlocal task marketplace application for posting, browsing, and managing lo
 | HTTP Client     | Axios                                                                       |
 | Backend Runtime | Node.js                                                                     |
 | Backend Framework | Express 4                                                                 |
+| Database        | MongoDB with Mongoose ODM                                                   |
+| Authentication  | JWT (jsonwebtoken) + bcryptjs password hashing                              |
 | Linting         | Oxlint                                                                      |
 
 ---
@@ -49,11 +53,20 @@ A hyperlocal task marketplace application for posting, browsing, and managing lo
 questlyv1/
 ├── backend/                     # Express API server
 │   ├── src/
-│   │   ├── index.ts             # Entry point, mounts all routes
-│   │   ├── types/index.ts       # Shared TypeScript interfaces
-│   │   ├── data/store.ts        # In-memory mock data
-│   │   ├── middleware/auth.ts   # Auth middleware (x-user-id header)
-│   │   ├── controllers/         # Route handler logic
+│   │   ├── index.ts             # Entry point, connects to MongoDB, seeds data, mounts routes
+│   │   ├── config/
+│   │   │   ├── db.ts            # MongoDB connection using Mongoose
+│   │   │   └── seed.ts          # Seeds demo data (users, tasks, conversations, messages, notifications)
+│   │   ├── models/              # Mongoose schemas
+│   │   │   ├── User.ts
+│   │   │   ├── Task.ts
+│   │   │   ├── Payment.ts
+│   │   │   ├── Conversation.ts
+│   │   │   ├── Message.ts
+│   │   │   └── Notification.ts
+│   │   ├── middleware/
+│   │   │   └── auth.ts          # JWT Bearer token verification middleware
+│   │   ├── controllers/         # Route handler logic (all use MongoDB)
 │   │   │   ├── auth.ts
 │   │   │   ├── tasks.ts
 │   │   │   ├── payments.ts
@@ -65,6 +78,7 @@ questlyv1/
 │   │       ├── payments.ts
 │   │       ├── messages.ts
 │   │       └── notifications.ts
+│   ├── .env                     # Environment variables (MONGODB_URI, JWT_SECRET, PORT)
 │   ├── package.json
 │   └── tsconfig.json
 ├── public/
@@ -94,7 +108,7 @@ questlyv1/
 │   │   ├── AuthLayout.tsx
 │   │   └── MainLayout.tsx
 │   ├── lib/
-│   │   ├── api.ts               # Axios client configured for backend
+│   │   ├── api.ts               # Axios client configured for backend (sends JWT Bearer token)
 │   │   └── utils.ts
 │   ├── pages/
 │   │   ├── Home.tsx
@@ -144,19 +158,23 @@ questlyv1/
 
 - Node.js (v18 or later)
 - npm
+- MongoDB (v6 or later) — running locally on port 27017
 
-### Frontend Setup
+### 1. Clone the Repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-username/questlyv1.git
 cd questlyv1
+```
 
+### 2. Frontend Setup
+
+```bash
 # Install frontend dependencies
 npm install
 ```
 
-### Backend Setup
+### 3. Backend Setup
 
 ```bash
 # Navigate to the backend directory
@@ -165,6 +183,18 @@ cd backend
 # Install backend dependencies
 npm install
 ```
+
+### 4. Configure Environment Variables
+
+The backend uses a `.env` file for configuration. A default one is already created:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/questly
+JWT_SECRET=questly-jwt-secret-change-in-production
+PORT=3001
+```
+
+Make sure MongoDB is running on your machine before starting the backend.
 
 ---
 
@@ -179,7 +209,10 @@ cd backend
 npm run dev
 ```
 
-The API server starts at `http://localhost:3001`.
+The API server starts at `http://localhost:3001`. On first run, it will:
+1. Connect to MongoDB
+2. Seed the database with demo data (users, tasks, conversations, messages, notifications)
+3. Start listening for API requests
 
 ### Start the Frontend (Vite Dev Server)
 
@@ -191,7 +224,17 @@ npm run dev
 
 The frontend runs at `http://localhost:5173` and is configured to connect to the backend at `http://localhost:3001`.
 
-> **Note:** The frontend automatically sends the logged-in user's ID as the `x-user-id` header with every API request. No JWT tokens or database are used yet — authentication is handled via simple email/password matching against the in-memory store.
+> **Note:** The frontend automatically sends the JWT token (stored in localStorage as `questly_token`) as a Bearer token with every authenticated API request.
+
+### Demo Accounts
+
+After seeding, you can log in with any of these accounts:
+
+| Name            | Email                  | Password      | Role     |
+| --------------- | ---------------------- | ------------- | -------- |
+| Sukesh          | sukesh@example.com     | password123   | Customer |
+| Sarah Jenkins   | sarah@example.com      | password123   | Tasker   |
+| Michael Chen    | michael@example.com    | password123   | Tasker   |
 
 ### Other Commands
 
@@ -204,31 +247,39 @@ npm run preview
 
 # Lint the codebase
 npm run lint
+
+# Build backend for production
+cd backend && npm run build
+
+# Start backend in production mode
+cd backend && npm start
 ```
 
 ---
 
 ## API Endpoints
 
-| Method | Endpoint                                  | Description               |
-| ------ | ----------------------------------------- | ------------------------- |
-| POST   | `/api/auth/register`                      | Register a new user       |
-| POST   | `/api/auth/login`                         | Login                     |
-| GET    | `/api/auth/me`                            | Get current user          |
-| GET    | `/api/tasks`                              | List tasks (with filters) |
-| GET    | `/api/tasks/:id`                          | Get task by ID            |
-| POST   | `/api/tasks`                              | Create a task             |
-| PATCH  | `/api/tasks/:id`                          | Update a task             |
-| POST   | `/api/payments/initiate`                  | Initiate payment          |
-| POST   | `/api/payments/release/:taskId`           | Release held payment      |
-| GET    | `/api/payments/:taskId`                   | Get payment by task ID    |
-| GET    | `/api/conversations`                      | List user conversations   |
-| GET    | `/api/conversations/:id/messages`         | Get messages              |
-| POST   | `/api/conversations/:id/messages`         | Send a message            |
-| GET    | `/api/notifications`                      | List notifications        |
-| PATCH  | `/api/notifications/:id/read`             | Mark notification as read |
-| PATCH  | `/api/notifications/read-all`             | Mark all as read          |
-| GET    | `/api/health`                             | Health check              |
+| Method | Endpoint                                  | Auth Required | Description               |
+| ------ | ----------------------------------------- | ------------- | ------------------------- |
+| POST   | `/api/auth/register`                      | No            | Register a new user       |
+| POST   | `/api/auth/login`                         | No            | Login                     |
+| GET    | `/api/auth/me`                            | Yes           | Get current user          |
+| GET    | `/api/tasks`                              | No            | List tasks (with filters) |
+| GET    | `/api/tasks/:id`                          | No            | Get task by ID            |
+| POST   | `/api/tasks`                              | Yes           | Create a task             |
+| PATCH  | `/api/tasks/:id`                          | Yes           | Update a task             |
+| POST   | `/api/payments/initiate`                  | Yes           | Initiate payment          |
+| POST   | `/api/payments/release/:taskId`           | Yes           | Release held payment      |
+| GET    | `/api/payments/:taskId`                   | Yes           | Get payment by task ID    |
+| GET    | `/api/conversations`                      | Yes           | List user conversations   |
+| GET    | `/api/conversations/:id/messages`         | Yes           | Get messages              |
+| POST   | `/api/conversations/:id/messages`         | Yes           | Send a message            |
+| GET    | `/api/notifications`                      | Yes           | List notifications        |
+| PATCH  | `/api/notifications/:id/read`             | Yes           | Mark notification as read |
+| PATCH  | `/api/notifications/read-all`             | Yes           | Mark all as read          |
+| GET    | `/api/health`                             | No            | Health check              |
+
+> **Auth Required** endpoints expect a `Authorization: Bearer <token>` header. The token is obtained from the login or register response.
 
 ---
 
@@ -251,16 +302,28 @@ npm run lint
 
 ---
 
+## What Changed (In-Memory → MongoDB Migration)
+
+The original backend used an in-memory data store (`backend/src/data/store.ts`) with hardcoded arrays. This has been fully replaced with MongoDB:
+
+| Before                          | After                                    |
+| ------------------------------- | ---------------------------------------- |
+| In-memory arrays in store.ts    | Mongoose models with MongoDB persistence |
+| Plaintext password comparison   | bcrypt password hashing                  |
+| `x-user-id` header auth         | JWT Bearer token authentication          |
+| Data resets on server restart   | Data persists in MongoDB                 |
+| Manual data setup               | Automatic seeding on first run           |
+
+---
+
 ## Future Enhancements
 
-- JWT-based authentication with token persistence
 - Interactive map view using Google Maps or Mapbox
 - Image upload for tasks and profile pictures
 - Real-time messaging via WebSockets
 - Push notifications
 - Payment gateway with in-app escrow
 - User reviews and ratings for completed tasks
-- PostgreSQL or MongoDB database (currently uses in-memory arrays)
 - Unit and integration tests (Vitest, Testing Library)
 
 ---

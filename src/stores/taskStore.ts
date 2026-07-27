@@ -25,7 +25,7 @@ interface TaskState {
   tasks: Task[];
   isLoading: boolean;
   fetchTasks: (filters?: TaskFilters) => Promise<void>;
-  addTask: (task: Omit<Task, "id" | "createdAt" | "status" | "rating" | "posterName" | "posterRating">) => Promise<void>;
+  addTask: (task: { title: string; category: string; description: string; budget: number; location: string; time: string; date: string }) => Promise<Task>;
   getTaskById: (id: string) => Task | undefined;
   filterTasks: (filters: TaskFilters) => Task[];
 }
@@ -66,6 +66,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const res = await api.post("/tasks", taskData);
       const newTask = res.data.task;
       set((state) => ({ tasks: [newTask, ...state.tasks] }));
+      return newTask;
     } catch (err) {
       console.error("Failed to create task", err);
       throw err;
