@@ -9,9 +9,9 @@ export default function RoleSelection() {
   const handleSelect = (role: "customer" | "tasker" | "both") => {
     setRole(role);
     if (role === "customer") {
-      navigate("/");
+      navigate("/home");
     } else {
-      navigate("/auth/onboarding");
+      navigate("/onboarding");
     }
   };
 

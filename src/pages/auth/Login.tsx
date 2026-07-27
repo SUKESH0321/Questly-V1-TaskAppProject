@@ -33,7 +33,7 @@ export default function Login() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     await login(values.email, values.password);
-    navigate("/");
+    navigate("/home");
   }
 
   return (
@@ -65,7 +65,7 @@ export default function Login() {
               <FormItem>
                 <div className="flex items-center justify-between">
                   <FormLabel>Password</FormLabel>
-                  <Link to="/auth/forgot" className="text-xs font-medium text-primary hover:underline">
+                  <Link to="/forgot" className="text-xs font-medium text-primary hover:underline">
                     Forgot password?
                   </Link>
                 </div>
@@ -84,7 +84,7 @@ export default function Login() {
 
       <div className="mt-6 text-center text-sm">
         <span className="text-muted-foreground">Don't have an account? </span>
-        <Link to="/auth/register" className="font-medium text-primary hover:underline">
+        <Link to="/register" className="font-medium text-primary hover:underline">
           Sign up
         </Link>
       </div>

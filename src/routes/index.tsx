@@ -19,6 +19,17 @@ import NotificationsPage from "@/pages/notifications/NotificationsPage";
 export const router = createBrowserRouter([
   {
     path: "/",
+    element: <AuthLayout />,
+    children: [
+      { index: true, element: <Login /> },
+      { path: "login", element: <Login /> },
+      { path: "register", element: <Register /> },
+      { path: "role-selection", element: <RoleSelection /> },
+      { path: "onboarding", element: <TaskerOnboarding /> },
+    ],
+  },
+  {
+    path: "/home",
     element: <MainLayout />,
     children: [
       { index: true, element: <Home /> },
@@ -29,16 +40,6 @@ export const router = createBrowserRouter([
       { path: "profile", element: <ProfilePage /> },
       { path: "messages", element: <MessagesPage /> },
       { path: "notifications", element: <NotificationsPage /> },
-    ],
-  },
-  {
-    path: "/auth",
-    element: <AuthLayout />,
-    children: [
-      { path: "login", element: <Login /> },
-      { path: "register", element: <Register /> },
-      { path: "role-selection", element: <RoleSelection /> },
-      { path: "onboarding", element: <TaskerOnboarding /> },
     ],
   },
 ]);

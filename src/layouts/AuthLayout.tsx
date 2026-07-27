@@ -1,15 +1,9 @@
-import { Outlet, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { Outlet } from "react-router-dom";
 
 export default function AuthLayout() {
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
-        </Link>
-        
         <div className="bg-card shadow-xl shadow-primary/5 rounded-2xl border border-border p-6 md:p-8 overflow-hidden relative">
           {/* Decorative element */}
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-primary/10 rounded-full blur-2xl"></div>

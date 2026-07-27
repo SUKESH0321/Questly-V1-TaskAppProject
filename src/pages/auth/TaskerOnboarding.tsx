@@ -87,7 +87,7 @@ export default function TaskerOnboarding() {
         phone: data.phone,
         location: data.location,
       });
-      navigate("/");
+      navigate("/home");
     }
   };
 

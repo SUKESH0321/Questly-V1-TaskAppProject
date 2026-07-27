@@ -35,7 +35,7 @@ export default function Register() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     await register(values.name, values.email, values.password);
-    navigate("/auth/role-selection");
+    navigate("/role-selection");
   }
 
   return (
@@ -94,7 +94,7 @@ export default function Register() {
 
       <div className="mt-6 text-center text-sm">
         <span className="text-muted-foreground">Already have an account? </span>
-        <Link to="/auth/login" className="font-medium text-primary hover:underline">
+        <Link to="/login" className="font-medium text-primary hover:underline">
           Sign in
         </Link>
       </div>

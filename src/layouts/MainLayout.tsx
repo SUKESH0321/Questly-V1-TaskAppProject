@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { Search, Bell, User, Home, MapPin, MessageSquare, Plus } from "lucide-react";
 
 const navItems = [
-  { path: "/", label: "Home", icon: Home },
+  { path: "/home", label: "Home", icon: Home },
   { path: "/tasks", label: "Tasks", icon: MapPin },
   { path: "/messages", label: "Messages", icon: MessageSquare },
   { path: "/profile", label: "Profile", icon: User },
@@ -21,7 +21,7 @@ export default function MainLayout() {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card">
         <div className="p-6">
-          <Link to="/">
+          <Link to="/home">
             <h1 className="text-2xl font-bold text-primary">Questly</h1>
           </Link>
         </div>
@@ -48,7 +48,7 @@ export default function MainLayout() {
         {/* Top Header */}
         <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between md:px-8">
           <div className="md:hidden">
-            <Link to="/">
+            <Link to="/home">
               <h1 className="text-xl font-bold text-primary">Questly</h1>
             </Link>
           </div>
