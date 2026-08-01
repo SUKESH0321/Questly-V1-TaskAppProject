@@ -47,7 +47,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    navigate("/auth/login");
+    navigate("/login");
   };
 
   const initials = user?.name

@@ -33,7 +33,7 @@ export default function TaskSuccess() {
       
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
         <Button variant="outline" size="lg" className="flex-1" asChild>
-          <Link to="/">Back to Home</Link>
+          <Link to="/home">Back to Home</Link>
         </Button>
         <Button size="lg" className="flex-1" asChild>
           <Link to={taskId ? `/tasks/${taskId}` : "/tasks"}>

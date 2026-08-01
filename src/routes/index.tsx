@@ -15,11 +15,14 @@ import Home from "@/pages/Home";
 import ProfilePage from "@/pages/profile/ProfilePage";
 import MessagesPage from "@/pages/messages/MessagesPage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
+import NotFound from "@/pages/NotFound";
+import RouteError from "@/pages/RouteError";
 
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <AuthLayout />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <Login /> },
       { path: "login", element: <Login /> },
@@ -29,17 +32,21 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: "/home",
     element: <MainLayout />,
+    errorElement: <RouteError />,
     children: [
-      { index: true, element: <Home /> },
-      { path: "tasks", element: <BrowseTasks /> },
-      { path: "tasks/create", element: <CreateTask /> },
-      { path: "tasks/success", element: <TaskSuccess /> },
-      { path: "tasks/:id", element: <TaskDetails /> },
-      { path: "profile", element: <ProfilePage /> },
-      { path: "messages", element: <MessagesPage /> },
-      { path: "notifications", element: <NotificationsPage /> },
+      { path: "/home", element: <Home /> },
+      { path: "/tasks", element: <BrowseTasks /> },
+      { path: "/tasks/create", element: <CreateTask /> },
+      { path: "/tasks/success", element: <TaskSuccess /> },
+      { path: "/tasks/:id", element: <TaskDetails /> },
+      { path: "/profile", element: <ProfilePage /> },
+      { path: "/messages", element: <MessagesPage /> },
+      { path: "/notifications", element: <NotificationsPage /> },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ]);
