@@ -133,14 +133,17 @@ export default function TaskerOnboarding() {
       <div className="bg-card border border-border p-6 md:p-8 rounded-3xl shadow-sm mt-8">
         {currentStep === 0 && (
           <div className="space-y-6 animate-in fade-in">
-            <h3 className="text-xl font-bold">Personal Details</h3>
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-6 bg-accent rounded-full"></div>
+              <h3 className="text-xl font-bold">Personal Details</h3>
+            </div>
             
             <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-dashed border-border group hover:border-primary cursor-pointer transition-colors">
-                  <Camera className="text-muted-foreground group-hover:text-primary transition-colors" />
+                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-dashed border-border group hover:border-accent cursor-pointer transition-colors">
+                  <Camera className="text-muted-foreground group-hover:text-accent transition-colors" />
                 </div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground border-2 border-card cursor-pointer hover:bg-primary/90 transition-colors">
+                <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground border-2 border-card cursor-pointer hover:bg-accent/90 transition-colors">
                   <Upload size={14} />
                 </div>
               </div>
@@ -177,7 +180,10 @@ export default function TaskerOnboarding() {
 
         {currentStep === 1 && (
           <div className="space-y-6 animate-in fade-in">
-            <h3 className="text-xl font-bold">What are your skills?</h3>
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-6 bg-accent rounded-full"></div>
+              <h3 className="text-xl font-bold">What are your skills?</h3>
+            </div>
             <p className="text-sm text-muted-foreground mb-4">Select all that apply.</p>
             
             <div className="flex flex-wrap gap-3">
@@ -200,7 +206,10 @@ export default function TaskerOnboarding() {
 
         {currentStep === 2 && (
           <div className="space-y-6 animate-in fade-in">
-            <h3 className="text-xl font-bold">Qualifications</h3>
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-6 bg-accent rounded-full"></div>
+              <h3 className="text-xl font-bold">Qualifications</h3>
+            </div>
             
             <div className="space-y-4">
               <div>
@@ -247,11 +256,14 @@ export default function TaskerOnboarding() {
 
         {currentStep === 3 && (
           <div className="space-y-6 animate-in fade-in">
-            <h3 className="text-xl font-bold">Portfolio</h3>
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-6 bg-accent rounded-full"></div>
+              <h3 className="text-xl font-bold">Portfolio</h3>
+            </div>
             <p className="text-sm text-muted-foreground mb-4">Showcase your previous work.</p>
             
-            <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors cursor-pointer group">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform mb-4">
+            <div className="border-2 border-dashed border-accent/30 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-accent/5 transition-colors cursor-pointer group">
+              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent group-hover:scale-110 transition-transform mb-4">
                 <Upload size={24} />
               </div>
               <h4 className="font-medium">Upload Images</h4>
@@ -271,7 +283,10 @@ export default function TaskerOnboarding() {
 
         {currentStep === 4 && (
           <div className="space-y-6 animate-in fade-in">
-            <h3 className="text-xl font-bold">Availability</h3>
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-6 bg-accent rounded-full"></div>
+              <h3 className="text-xl font-bold">Availability</h3>
+            </div>
             
             <div className="space-y-4">
               <div>
@@ -284,7 +299,7 @@ export default function TaskerOnboarding() {
                       className={`w-10 h-10 rounded-full border flex items-center justify-center text-sm font-medium transition-colors ${
                         data.workingDays.includes(day)
                           ? "bg-accent text-accent-foreground border-accent"
-                          : "border-border text-foreground hover:border-primary hover:text-primary"
+                          : "border-border text-foreground hover:border-accent hover:text-accent"
                       }`}
                     >
                       {day[0]}
@@ -316,7 +331,7 @@ export default function TaskerOnboarding() {
                 <label className="text-sm font-medium mb-1 block">Travel Radius (miles)</label>
                 <input 
                   type="range" 
-                  className="w-full accent-primary" 
+                  className="w-full accent-accent" 
                   min="1" 
                   max="50" 
                   value={data.travelRadius}
@@ -343,14 +358,14 @@ export default function TaskerOnboarding() {
             
             <div className="bg-muted p-4 rounded-xl text-left space-y-4 border border-border">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center shadow-sm">1</div>
+                <div className="w-8 h-8 rounded-full bg-accent/15 text-accent font-semibold flex items-center justify-center shadow-sm border border-accent/30">1</div>
                 <div>
                   <p className="font-medium text-sm">Government ID Upload</p>
                   <p className="text-xs text-muted-foreground">Passport, Driver's License, or National ID</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center shadow-sm">2</div>
+                <div className="w-8 h-8 rounded-full bg-accent/15 text-accent font-semibold flex items-center justify-center shadow-sm border border-accent/30">2</div>
                 <div>
                   <p className="font-medium text-sm">Selfie Verification</p>
                   <p className="text-xs text-muted-foreground">Take a quick selfie to match your ID</p>
@@ -362,7 +377,7 @@ export default function TaskerOnboarding() {
       </div>
 
       <div className="flex justify-between mt-8">
-        <Button variant="outline" size="lg" onClick={handleBack} className={currentStep === 0 ? "invisible" : ""}>
+        <Button variant="outline" size="lg" onClick={handleBack} className={`${currentStep === 0 ? "invisible" : ""} hover:border-accent hover:text-accent`}>
           Back
         </Button>
         <Button size="lg" onClick={handleNext} className="min-w-[120px] bg-accent hover:bg-accent/90 text-accent-foreground">

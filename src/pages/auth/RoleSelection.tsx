@@ -25,9 +25,9 @@ export default function RoleSelection() {
       <div className="space-y-4">
         <button 
           onClick={() => handleSelect("customer")}
-          className="w-full p-4 rounded-xl border-2 border-transparent bg-muted hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center gap-4 text-left group"
+          className="w-full p-4 rounded-xl border-2 border-transparent bg-muted hover:bg-accent/5 hover:border-accent/30 transition-all flex items-center gap-4 text-left group"
         >
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
             <User size={24} />
           </div>
           <div>
@@ -38,7 +38,7 @@ export default function RoleSelection() {
 
         <button 
           onClick={() => handleSelect("tasker")}
-          className="w-full p-4 rounded-xl border-2 border-transparent bg-muted hover:bg-accent/5 hover:border-accent/20 transition-all flex items-center gap-4 text-left group"
+          className="w-full p-4 rounded-xl border-2 border-transparent bg-muted hover:bg-accent/5 hover:border-accent/30 transition-all flex items-center gap-4 text-left group"
         >
           <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
             <Briefcase size={24} />
@@ -51,9 +51,9 @@ export default function RoleSelection() {
 
         <button 
           onClick={() => handleSelect("both")}
-          className="w-full p-4 rounded-xl border-2 border-transparent bg-muted hover:bg-secondary/50 hover:border-secondary transition-all flex items-center gap-4 text-left group"
+          className="w-full p-4 rounded-xl border-2 border-transparent bg-muted hover:bg-accent/5 hover:border-accent/30 transition-all flex items-center gap-4 text-left group"
         >
-          <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
             <Settings size={24} />
           </div>
           <div>

@@ -22,7 +22,9 @@ export default function MainLayout() {
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card">
         <div className="p-6">
           <Link to="/home">
-            <h1 className="text-2xl font-bold text-primary">Questly</h1>
+            <h1 className="text-2xl font-bold text-primary">
+              <span className="text-accent">Q</span>uestly
+            </h1>
           </Link>
         </div>
         <nav className="flex-1 px-4 space-y-2">
@@ -32,7 +34,7 @@ export default function MainLayout() {
               to={item.path}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                 isActive(item.path)
-                  ? "text-primary bg-primary/10 font-medium"
+                  ? "text-accent bg-accent/10 font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
@@ -49,7 +51,9 @@ export default function MainLayout() {
         <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between md:px-8">
           <div className="md:hidden">
             <Link to="/home">
-              <h1 className="text-xl font-bold text-primary">Questly</h1>
+              <h1 className="text-xl font-bold text-primary">
+                <span className="text-accent">Q</span>uestly
+              </h1>
             </Link>
           </div>
           
@@ -58,20 +62,20 @@ export default function MainLayout() {
             <input 
               type="text" 
               placeholder="Search for tasks..." 
-              className="w-full pl-9 pr-4 py-2 bg-muted rounded-full border-none focus:ring-2 focus:ring-primary/20 outline-none text-sm"
+              className="w-full pl-9 pr-4 py-2 bg-muted rounded-full border-none focus:ring-2 focus:ring-accent/30 outline-none text-sm"
             />
           </div>
 
           <div className="flex items-center gap-4">
             <Link
               to="/notifications"
-              className="relative p-2 text-muted-foreground hover:text-foreground transition-colors"
+              className="relative p-2 text-muted-foreground hover:text-accent transition-colors"
             >
               <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full"></span>
+              <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full"></span>
             </Link>
             <Link to="/profile">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium hover:bg-primary/30 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-medium hover:bg-accent/30 transition-colors">
                 U
               </div>
             </Link>
@@ -86,7 +90,7 @@ export default function MainLayout() {
         {/* Floating Action Button (Mobile) */}
         <Link
           to="/tasks/create"
-          className="md:hidden fixed bottom-24 right-4 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg shadow-primary/30 flex items-center justify-center z-50 hover:bg-primary/90 transition-colors"
+          className="md:hidden fixed bottom-24 right-4 w-14 h-14 bg-accent text-accent-foreground rounded-full shadow-lg shadow-accent/30 flex items-center justify-center z-50 hover:bg-accent/90 transition-colors"
         >
           <Plus size={24} />
         </Link>
@@ -98,7 +102,7 @@ export default function MainLayout() {
               key={item.path}
               to={item.path}
               className={`flex flex-col items-center gap-1 ${
-                isActive(item.path) ? "text-primary" : "text-muted-foreground"
+                isActive(item.path) ? "text-accent" : "text-muted-foreground"
               }`}
             >
               <item.icon size={20} />
