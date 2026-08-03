@@ -27,7 +27,7 @@ interface AuthState {
   fetchUser: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
@@ -77,10 +77,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  setRole: (role: UserRole) => {
+  setRole: async (role: UserRole) => {
     set((state) => ({
       user: state.user ? { ...state.user, role } : null,
     }));
+    try {
+      const res = await api.patch("/auth/me", { role });
+      const updated = res.data.user;
+      set({ user: updated });
+    } catch (err) {
+      console.error("Failed to update role", err);
+    }
   },
 
   logout: () => {
@@ -89,10 +96,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, isAuthenticated: false, isLoading: false, error: null });
   },
 
-  updateUser: (data: Partial<User>) => {
+  updateUser: async (data: Partial<User>) => {
     set((state) => ({
       user: state.user ? { ...state.user, ...data } : null,
     }));
+    try {
+      const res = await api.patch("/auth/me", data);
+      const updated = res.data.user;
+      set({ user: updated });
+    } catch (err) {
+      console.error("Failed to update profile", err);
+    }
   },
 
   fetchUser: async () => {

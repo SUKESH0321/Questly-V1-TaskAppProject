@@ -92,3 +92,40 @@ export async function getMe(req: Request, res: Response) {
     },
   });
 }
+
+export async function updateMe(req: Request, res: Response) {
+  const user = await User.findById(req.userId);
+  if (!user) {
+    res.status(404).json({ error: "User not found." });
+    return;
+  }
+
+  const { name, phone, location, role, avatar } = req.body;
+
+  if (name !== undefined) user.name = name;
+  if (phone !== undefined) user.phone = phone;
+  if (location !== undefined) user.location = location;
+  if (avatar !== undefined) user.avatar = avatar;
+  if (role !== undefined) {
+    if (!["customer", "tasker", "both", null].includes(role)) {
+      res.status(400).json({ error: "Invalid role." });
+      return;
+    }
+    user.role = role;
+  }
+
+  await user.save();
+
+  res.json({
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      location: user.location,
+      avatar: user.avatar,
+      rating: user.rating,
+    },
+  });
+}

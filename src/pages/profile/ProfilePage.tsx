@@ -40,8 +40,8 @@ export default function ProfilePage() {
   const completedTasks = userTasks.filter((t) => t.status === "completed");
   const activeTasks = userTasks.filter((t) => t.status === "open");
 
-  const handleSaveProfile = () => {
-    updateUser({ name: editName, phone: editPhone, location: editLocation });
+  const handleSaveProfile = async () => {
+    await updateUser({ name: editName, phone: editPhone, location: editLocation });
     setIsEditing(false);
   };
 
