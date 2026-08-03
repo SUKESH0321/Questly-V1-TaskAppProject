@@ -16,13 +16,15 @@ import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters" }),
 });
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthStore();
-  
+  const { login, isLoading, error } = useAuthStore();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -32,15 +34,21 @@ export default function Login() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    await login(values.email, values.password);
-    navigate("/home");
+    try {
+      await login(values.email, values.password);
+      navigate("/home");
+    } catch {
+      // Error is already stored in the auth store.
+    }
   }
 
   return (
     <div className="w-full">
       <div className="mb-6">
         <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
-        <p className="text-muted-foreground text-sm">Enter your credentials to login.</p>
+        <p className="text-muted-foreground text-sm">
+          Enter your credentials to login.
+        </p>
       </div>
 
       <Form {...form}>
@@ -76,6 +84,11 @@ export default function Login() {
               </FormItem>
             )}
           />
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <Button type="submit" className="w-full mt-6" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign in"}
           </Button>
@@ -84,7 +97,10 @@ export default function Login() {
 
       <div className="mt-6 text-center text-sm">
         <span className="text-muted-foreground">Don't have an account? </span>
-        <Link to="/register" className="font-medium text-primary hover:underline">
+        <Link
+          to="/register"
+          className="font-medium text-primary hover:underline"
+        >
           Sign up
         </Link>
       </div>

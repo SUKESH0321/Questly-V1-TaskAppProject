@@ -55,16 +55,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (filters?.sortBy) params.set("sortBy", filters.sortBy);
 
       const res = await api.get(`/tasks?${params.toString()}`);
-      set({ tasks: res.data.tasks, isLoading: false });
+      const taskList = Array.isArray(res.data?.tasks) ? res.data.tasks : [];
+      set({ tasks: taskList, isLoading: false });
     } catch {
-      set({ isLoading: false });
+      set({ tasks: [], isLoading: false });
     }
   },
 
   addTask: async (taskData) => {
     try {
       const res = await api.post("/tasks", taskData);
-      const newTask = res.data.task;
+      const newTask = res.data?.task;
+      if (!newTask) {
+        throw new Error("Task creation did not return a task");
+      }
       set((state) => ({ tasks: [newTask, ...state.tasks] }));
       return newTask;
     } catch (err) {

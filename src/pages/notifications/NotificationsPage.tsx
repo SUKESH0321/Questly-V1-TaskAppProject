@@ -26,13 +26,16 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchNotifications = async () => {
     try {
+      setError(null);
       const res = await api.get("/notifications");
       setNotifications(res.data.notifications);
     } catch (err) {
       console.error("Failed to fetch notifications", err);
+      setError("We couldn’t load your notifications right now.");
     } finally {
       setIsLoading(false);
     }
@@ -42,9 +45,8 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, []);
 
-  const filteredNotifs = filter === "all"
-    ? notifications
-    : notifications.filter((n) => !n.read);
+  const filteredNotifs =
+    filter === "all" ? notifications : notifications.filter((n) => !n.read);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -54,6 +56,7 @@ export default function NotificationsPage() {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (err) {
       console.error("Failed to mark all as read", err);
+      setError("We couldn’t update your notifications.");
     }
   };
 
@@ -61,10 +64,11 @@ export default function NotificationsPage() {
     try {
       await api.patch(`/notifications/${id}/read`);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
       );
     } catch (err) {
       console.error("Failed to mark notification as read", err);
+      setError("We couldn’t update this notification.");
     }
   };
 
@@ -109,7 +113,11 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isLoading ? "" : unreadCount > 0 ? `You have ${unreadCount} unread notifications` : "All caught up!"}
+            {isLoading
+              ? ""
+              : unreadCount > 0
+                ? `You have ${unreadCount} unread notifications`
+                : "All caught up!"}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -148,11 +156,20 @@ export default function NotificationsPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       {/* Notification List */}
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-start gap-4 p-4 rounded-xl animate-pulse">
+            <div
+              key={i}
+              className="flex items-start gap-4 p-4 rounded-xl animate-pulse"
+            >
               <div className="w-10 h-10 rounded-full bg-muted flex-shrink-0" />
               <div className="flex-1 space-y-2">
                 <div className="h-4 bg-muted rounded w-1/3" />
@@ -166,9 +183,13 @@ export default function NotificationsPage() {
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
             <Bell size={32} className="text-muted-foreground" />
           </div>
-          <h3 className="font-semibold text-foreground text-lg">No notifications</h3>
+          <h3 className="font-semibold text-foreground text-lg">
+            No notifications
+          </h3>
           <p className="text-muted-foreground text-sm mt-1">
-            {filter === "unread" ? "You've read all your notifications!" : "You don't have any notifications yet."}
+            {filter === "unread"
+              ? "You've read all your notifications!"
+              : "You don't have any notifications yet."}
           </p>
         </div>
       ) : (
@@ -183,14 +204,20 @@ export default function NotificationsPage() {
                   : "bg-primary/5 hover:bg-primary/10 border border-primary/10"
               }`}
             >
-              <div className={`w-10 h-10 rounded-full ${getIconBg(notif.type)} flex items-center justify-center flex-shrink-0`}>
+              <div
+                className={`w-10 h-10 rounded-full ${getIconBg(notif.type)} flex items-center justify-center flex-shrink-0`}
+              >
                 {getIcon(notif.type)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="font-medium text-foreground text-sm">{notif.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">{notif.description}</p>
+                    <h3 className="font-medium text-foreground text-sm">
+                      {notif.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {notif.description}
+                    </p>
                   </div>
                   {!notif.read && (
                     <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2"></span>
@@ -198,10 +225,15 @@ export default function NotificationsPage() {
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <Clock size={12} className="text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{notif.time}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {notif.time}
+                  </span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-muted-foreground flex-shrink-0 mt-3" />
+              <ChevronRight
+                size={16}
+                className="text-muted-foreground flex-shrink-0 mt-3"
+              />
             </button>
           ))}
         </div>

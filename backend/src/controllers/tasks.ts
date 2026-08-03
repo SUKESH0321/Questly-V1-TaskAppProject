@@ -50,12 +50,23 @@ export async function getAllTasks(req: Request, res: Response) {
 }
 
 export async function getTaskById(req: Request, res: Response) {
-  const task = await Task.findById(req.params.id).lean();
-  if (!task) {
-    res.status(404).json({ error: "Task not found." });
+  const { id } = req.params;
+
+  if (!id || id === "undefined") {
+    res.status(400).json({ error: "A valid task id is required." });
     return;
   }
-  res.json({ task });
+
+  try {
+    const task = await Task.findById(id).lean();
+    if (!task) {
+      res.status(404).json({ error: "Task not found." });
+      return;
+    }
+    res.json({ task });
+  } catch (err) {
+    res.status(400).json({ error: "A valid task id is required." });
+  }
 }
 
 export async function createTask(req: Request, res: Response) {

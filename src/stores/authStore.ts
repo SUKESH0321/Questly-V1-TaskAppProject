@@ -30,7 +30,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true,
   error: null,
 
   login: async (email: string, password: string) => {
@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (err: unknown) {
       const message =
         err && typeof err === "object" && "response" in err
-          ? (err as { response: { data: { error: string } } }).response.data.error
+          ? (err as { response: { data: { error?: string } } }).response?.data?.error || "Login failed"
           : "Login failed";
       set({ isLoading: false, error: message });
       throw new Error(message);
@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (err: unknown) {
       const message =
         err && typeof err === "object" && "response" in err
-          ? (err as { response: { data: { error: string } } }).response.data.error
+          ? (err as { response: { data: { error?: string } } }).response?.data?.error || "Registration failed"
           : "Registration failed";
       set({ isLoading: false, error: message });
       throw new Error(message);
@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem("questly_token");
     localStorage.removeItem("questly_user_id");
-    set({ user: null, isAuthenticated: false });
+    set({ user: null, isAuthenticated: false, isLoading: false, error: null });
   },
 
   updateUser: (data: Partial<User>) => {
@@ -97,16 +97,21 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   fetchUser: async () => {
     const token = localStorage.getItem("questly_token");
-    if (!token) return;
+    if (!token) {
+      set({ isAuthenticated: false, isLoading: false, user: null });
+      return;
+    }
+
+    set({ isLoading: true });
 
     try {
       const res = await api.get("/auth/me");
       const user = res.data.user;
-      set({ user, isAuthenticated: true });
+      set({ user, isAuthenticated: true, isLoading: false, error: null });
     } catch {
       localStorage.removeItem("questly_token");
       localStorage.removeItem("questly_user_id");
-      set({ user: null, isAuthenticated: false });
+      set({ user: null, isAuthenticated: false, isLoading: false, error: null });
     }
   },
 }));

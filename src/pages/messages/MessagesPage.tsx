@@ -2,7 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Send, Phone, Video, MoreHorizontal, ArrowLeft, Paperclip } from "lucide-react";
+import {
+  Search,
+  Send,
+  Phone,
+  Video,
+  MoreHorizontal,
+  ArrowLeft,
+  Paperclip,
+} from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -28,9 +36,11 @@ export default function MessagesPage() {
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchConversations = useCallback(async () => {
     try {
+      setError(null);
       const res = await api.get("/conversations");
       const convs = res.data.conversations.map((c: any) => ({
         id: c.id,
@@ -42,6 +52,7 @@ export default function MessagesPage() {
       setConversations(convs);
     } catch (err) {
       console.error("Failed to fetch conversations", err);
+      setError("We couldn’t load your conversations right now.");
     } finally {
       setIsLoading(false);
     }
@@ -51,26 +62,27 @@ export default function MessagesPage() {
     fetchConversations();
   }, [fetchConversations]);
 
-  const fetchMessages = useCallback(async (convId: string) => {
-    try {
-      const res = await api.get(`/conversations/${convId}/messages`);
-      const msgs = res.data.messages.map((m: any) => ({
-        id: m.id,
-        text: m.text,
-        sender: m.senderId === user?.id ? "me" : "them" as "me" | "them",
-        time: m.time,
-      }));
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === convId ? { ...c, messages: msgs } : c
-        )
-      );
-      return msgs;
-    } catch (err) {
-      console.error("Failed to fetch messages", err);
-      return [];
-    }
-  }, [user?.id]);
+  const fetchMessages = useCallback(
+    async (convId: string) => {
+      try {
+        const res = await api.get(`/conversations/${convId}/messages`);
+        const msgs = res.data.messages.map((m: any) => ({
+          id: m.id,
+          text: m.text,
+          sender: m.senderId === user?.id ? "me" : ("them" as "me" | "them"),
+          time: m.time,
+        }));
+        setConversations((prev) =>
+          prev.map((c) => (c.id === convId ? { ...c, messages: msgs } : c)),
+        );
+        return msgs;
+      } catch (err) {
+        console.error("Failed to fetch messages", err);
+        return [];
+      }
+    },
+    [user?.id],
+  );
 
   const handleSelectConversation = async (conv: Conversation) => {
     setSelectedConv(conv);
@@ -78,12 +90,12 @@ export default function MessagesPage() {
     // Fetch messages for this conversation
     if (conv.messages.length === 0) {
       const msgs = await fetchMessages(conv.id);
-      setSelectedConv((prev) => prev ? { ...prev, messages: msgs } : null);
+      setSelectedConv((prev) => (prev ? { ...prev, messages: msgs } : null));
     }
   };
 
   const filteredConversations = conversations.filter((c) =>
-    c.otherUser?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    c.otherUser?.name?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleSendMessage = async () => {
@@ -100,18 +112,19 @@ export default function MessagesPage() {
         time: newMsg.time,
       };
       setSelectedConv((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, chatMsg] } : null
+        prev ? { ...prev, messages: [...prev.messages, chatMsg] } : null,
       );
       setConversations((prev) =>
         prev.map((c) =>
           c.id === selectedConv.id
             ? { ...c, lastMessage: newMsg.text, lastTime: newMsg.time }
-            : c
-        )
+            : c,
+        ),
       );
       setMessageInput("");
     } catch (err) {
       console.error("Failed to send message", err);
+      setError("Your message could not be sent.");
     }
   };
 
@@ -128,9 +141,11 @@ export default function MessagesPage() {
   return (
     <div className="flex h-[calc(100vh-64px)]">
       {/* Conversation List */}
-      <div className={`w-full md:w-96 border-r border-border bg-card flex flex-col ${
-        showChat ? "hidden md:flex" : "flex"
-      }`}>
+      <div
+        className={`w-full md:w-96 border-r border-border bg-card flex flex-col ${
+          showChat ? "hidden md:flex" : "flex"
+        }`}
+      >
         <div className="p-4 border-b border-border">
           <h1 className="text-xl font-bold text-foreground mb-3">Messages</h1>
           <div className="relative">
@@ -145,6 +160,11 @@ export default function MessagesPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto divide-y divide-border">
+          {error && (
+            <div className="m-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           {isLoading ? (
             <div className="p-8 space-y-4">
               {[1, 2, 3].map((i) => (
@@ -173,16 +193,24 @@ export default function MessagesPage() {
                 <div className="relative">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={conv.otherUser?.avatar} />
-                    <AvatarFallback>{conv.otherUser ? initials(conv.otherUser.name) : "?"}</AvatarFallback>
+                    <AvatarFallback>
+                      {conv.otherUser ? initials(conv.otherUser.name) : "?"}
+                    </AvatarFallback>
                   </Avatar>
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-accent rounded-full border-2 border-card"></span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-semibold text-foreground truncate">{conv.otherUser?.name || "Unknown"}</h3>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">{conv.lastTime}</span>
+                    <h3 className="font-semibold text-foreground truncate">
+                      {conv.otherUser?.name || "Unknown"}
+                    </h3>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                      {conv.lastTime}
+                    </span>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {conv.lastMessage}
+                  </p>
                 </div>
               </button>
             ))
@@ -191,7 +219,9 @@ export default function MessagesPage() {
       </div>
 
       {/* Chat Area */}
-      <div className={`flex-1 flex flex-col ${showChat ? "flex" : "hidden md:flex"}`}>
+      <div
+        className={`flex-1 flex flex-col ${showChat ? "flex" : "hidden md:flex"}`}
+      >
         {selectedConv ? (
           <>
             {/* Chat Header */}
@@ -206,10 +236,16 @@ export default function MessagesPage() {
               </Button>
               <Avatar className="h-10 w-10">
                 <AvatarImage src={selectedConv.otherUser?.avatar} />
-                <AvatarFallback>{selectedConv.otherUser ? initials(selectedConv.otherUser.name) : "?"}</AvatarFallback>
+                <AvatarFallback>
+                  {selectedConv.otherUser
+                    ? initials(selectedConv.otherUser.name)
+                    : "?"}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground">{selectedConv.otherUser?.name || "Unknown"}</h3>
+                <h3 className="font-semibold text-foreground">
+                  {selectedConv.otherUser?.name || "Unknown"}
+                </h3>
                 <p className="text-xs text-muted-foreground">Online</p>
               </div>
               <Button variant="ghost" size="icon">
@@ -245,7 +281,9 @@ export default function MessagesPage() {
                       <p className="text-sm">{msg.text}</p>
                       <p
                         className={`text-[10px] mt-1 ${
-                          msg.sender === "me" ? "text-primary-foreground/70" : "text-muted-foreground"
+                          msg.sender === "me"
+                            ? "text-primary-foreground/70"
+                            : "text-muted-foreground"
                         }`}
                       >
                         {msg.time}
@@ -259,7 +297,11 @@ export default function MessagesPage() {
             {/* Message Input */}
             <div className="p-4 border-t border-border bg-card">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <Paperclip size={18} />
                 </Button>
                 <Input
@@ -285,8 +327,12 @@ export default function MessagesPage() {
               <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                 <Send size={32} className="text-muted-foreground" />
               </div>
-              <h3 className="font-bold text-lg text-foreground">Your Messages</h3>
-              <p className="text-muted-foreground text-sm mt-1">Select a conversation to start chatting</p>
+              <h3 className="font-bold text-lg text-foreground">
+                Your Messages
+              </h3>
+              <p className="text-muted-foreground text-sm mt-1">
+                Select a conversation to start chatting
+              </p>
             </div>
           </div>
         )}

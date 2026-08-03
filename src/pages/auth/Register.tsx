@@ -17,12 +17,14 @@ import { Input } from "@/components/ui/input";
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   email: z.string().email({ message: "Invalid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters" }),
 });
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, isLoading } = useAuthStore();
+  const { register, isLoading, error } = useAuthStore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -34,15 +36,21 @@ export default function Register() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    await register(values.name, values.email, values.password);
-    navigate("/role-selection");
+    try {
+      await register(values.name, values.email, values.password);
+      navigate("/role-selection");
+    } catch {
+      // Error is already stored in the auth store.
+    }
   }
 
   return (
     <div className="w-full">
       <div className="mb-6">
         <h2 className="text-2xl font-bold tracking-tight">Create an account</h2>
-        <p className="text-muted-foreground text-sm">Join Questly and start doing tasks.</p>
+        <p className="text-muted-foreground text-sm">
+          Join Questly and start doing tasks.
+        </p>
       </div>
 
       <Form {...form}>
@@ -86,6 +94,11 @@ export default function Register() {
               </FormItem>
             )}
           />
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <Button type="submit" className="w-full mt-6" disabled={isLoading}>
             {isLoading ? "Creating account..." : "Sign up"}
           </Button>

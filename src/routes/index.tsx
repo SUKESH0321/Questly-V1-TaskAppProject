@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
 import AuthLayout from "@/layouts/AuthLayout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
@@ -32,7 +33,11 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    element: <MainLayout />,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     errorElement: <RouteError />,
     children: [
       { path: "/home", element: <Home /> },
