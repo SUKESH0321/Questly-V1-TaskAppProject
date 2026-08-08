@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,19 +32,24 @@ interface Conversation {
 
 export default function MessagesPage() {
   const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  // Track the conversationId from the URL that we still need to auto-select
+  const pendingConvId = searchParams.get("conversationId");
+  const handledInitialSelect = useRef(false);
 
   const fetchConversations = useCallback(async () => {
     try {
       setError(null);
       const res = await api.get("/conversations");
       const convs = res.data.conversations.map((c: any) => ({
-        id: c.id,
+        id: c.id ?? c._id?.toString?.(),
         otherUser: c.otherUser,
         lastMessage: c.lastMessage,
         lastTime: c.lastTime,
@@ -67,7 +73,7 @@ export default function MessagesPage() {
       try {
         const res = await api.get(`/conversations/${convId}/messages`);
         const msgs = res.data.messages.map((m: any) => ({
-          id: m.id,
+          id: m.id ?? m._id?.toString?.(),
           text: m.text,
           sender: m.senderId === user?.id ? "me" : ("them" as "me" | "them"),
           time: m.time,
@@ -94,6 +100,49 @@ export default function MessagesPage() {
     }
   };
 
+  // Auto-select a conversation when arriving with ?conversationId=xxx
+  useEffect(() => {
+    if (handledInitialSelect.current) return;
+    if (!pendingConvId) return;
+
+    const autoSelect = async () => {
+      // Check if the conversation is already in the list
+      const existing = conversations.find((c) => c.id === pendingConvId);
+      if (existing) {
+        handledInitialSelect.current = true;
+        await handleSelectConversation(existing);
+        return;
+      }
+
+      // Otherwise fetch it directly
+      try {
+        const res = await api.get(`/conversations/${pendingConvId}`);
+        const convData = res.data.conversation;
+        if (convData) {
+          const conv: Conversation = {
+            id: convData.id ?? convData._id?.toString?.(),
+            otherUser: convData.otherUser,
+            lastMessage: convData.lastMessage,
+            lastTime: convData.lastTime,
+            messages: [],
+          };
+          // Add it to the conversations list so it appears in the sidebar
+          setConversations((prev) =>
+            prev.some((c) => c.id === conv.id)
+              ? prev
+              : [conv, ...prev],
+          );
+          handledInitialSelect.current = true;
+          await handleSelectConversation(conv);
+        }
+      } catch (err) {
+        console.error("Failed to auto-select conversation", err);
+      }
+    };
+
+    autoSelect();
+  }, [pendingConvId, conversations]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredConversations = conversations.filter((c) =>
     c.otherUser?.name?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -106,7 +155,7 @@ export default function MessagesPage() {
       });
       const newMsg = res.data.message;
       const chatMsg: ChatMessage = {
-        id: newMsg.id,
+        id: newMsg.id ?? newMsg._id?.toString?.(),
         text: newMsg.text,
         sender: "me",
         time: newMsg.time,
@@ -134,9 +183,6 @@ export default function MessagesPage() {
       .map((n) => n[0])
       .join("")
       .toUpperCase();
-
-  // Mobile: show conversation list or chat
-  const [showChat, setShowChat] = useState(false);
 
   return (
     <div className="flex h-[calc(100vh-64px)]">

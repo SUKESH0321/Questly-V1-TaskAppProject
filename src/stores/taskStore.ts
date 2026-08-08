@@ -55,7 +55,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (filters?.sortBy) params.set("sortBy", filters.sortBy);
 
       const res = await api.get(`/tasks?${params.toString()}`);
-      const taskList = Array.isArray(res.data?.tasks) ? res.data.tasks : [];
+      const rawTasks = Array.isArray(res.data?.tasks) ? res.data.tasks : [];
+      // Normalize: ensure every task has an `id` (backend may return `_id`)
+      const taskList = rawTasks.map((t: any) => ({
+        ...t,
+        id: t.id ?? t._id?.toString?.(),
+      }));
       set({ tasks: taskList, isLoading: false });
     } catch {
       set({ tasks: [], isLoading: false });
@@ -65,10 +70,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   addTask: async (taskData) => {
     try {
       const res = await api.post("/tasks", taskData);
-      const newTask = res.data?.task;
-      if (!newTask) {
+      const rawTask = res.data?.task;
+      if (!rawTask) {
         throw new Error("Task creation did not return a task");
       }
+      const newTask = {
+        ...rawTask,
+        id: rawTask.id ?? rawTask._id?.toString?.(),
+      };
       set((state) => ({ tasks: [newTask, ...state.tasks] }));
       return newTask;
     } catch (err) {

@@ -46,7 +46,12 @@ export async function getAllTasks(req: Request, res: Response) {
 
   const tasks = await Task.find(filter).sort(sortOption).lean();
 
-  res.json({ tasks });
+  const normalized = tasks.map((t) => ({
+    ...t,
+    id: t._id.toString(),
+  }));
+
+  res.json({ tasks: normalized });
 }
 
 export async function getTaskById(req: Request, res: Response) {
@@ -63,7 +68,7 @@ export async function getTaskById(req: Request, res: Response) {
       res.status(404).json({ error: "Task not found." });
       return;
     }
-    res.json({ task });
+    res.json({ task: { ...task, id: task._id.toString() } });
   } catch (err) {
     res.status(400).json({ error: "A valid task id is required." });
   }
@@ -100,7 +105,8 @@ export async function createTask(req: Request, res: Response) {
 
   await newTask.save();
 
-  res.status(201).json({ task: newTask.toObject() });
+  const saved = newTask.toObject();
+  res.status(201).json({ task: { ...saved, id: saved._id.toString() } });
 }
 
 export async function updateTask(req: Request, res: Response) {
@@ -124,5 +130,6 @@ export async function updateTask(req: Request, res: Response) {
 
   await task.save();
 
-  res.json({ task: task.toObject() });
+  const saved = task.toObject();
+  res.json({ task: { ...saved, id: saved._id.toString() } });
 }

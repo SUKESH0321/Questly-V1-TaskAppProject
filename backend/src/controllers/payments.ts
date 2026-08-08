@@ -32,7 +32,8 @@ export async function initiatePayment(req: Request, res: Response) {
 
   await newPayment.save();
 
-  res.status(201).json({ payment: newPayment.toObject() });
+  const paymentObj = newPayment.toObject();
+  res.status(201).json({ payment: { ...paymentObj, id: paymentObj._id.toString() } });
 }
 
 export async function releasePayment(req: Request, res: Response) {
@@ -53,7 +54,8 @@ export async function releasePayment(req: Request, res: Response) {
   payment.releasedAt = new Date();
   await payment.save();
 
-  res.json({ payment: payment.toObject() });
+  const paymentObj = payment.toObject();
+  res.json({ payment: { ...paymentObj, id: paymentObj._id.toString() } });
 }
 
 export async function getPayment(req: Request, res: Response) {
@@ -63,5 +65,5 @@ export async function getPayment(req: Request, res: Response) {
     return;
   }
 
-  res.json({ payment });
+  res.json({ payment: { ...payment, id: payment._id.toString() } });
 }
