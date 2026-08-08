@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   MapPin,
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import api from "@/lib/api";
 import { usePaymentStore } from "@/stores/paymentStore";
+import { useAuthStore } from "@/stores/authStore";
 import { PaymentModal } from "@/components/payments/PaymentModal";
 import { ReleasePaymentButton } from "@/components/payments/ReleasePaymentButton";
 import { EscrowBadge } from "@/components/shared/EscrowBadge";
@@ -38,15 +39,48 @@ interface Task {
 
 export default function TaskDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const payment = usePaymentStore((s) =>
     task ? s.getPayment(task.id) : undefined,
   );
   const safeTask = task ?? null;
+
+  const handleApply = async () => {
+    if (!safeTask) return;
+
+    if (user?.role !== "tasker" && user?.role !== "both") {
+      setApplyError(
+        "Only taskers can apply for tasks. Update your role in your profile first.",
+      );
+      return;
+    }
+
+    setIsApplying(true);
+    setApplyError(null);
+    try {
+      const res = await api.post("/conversations", { taskId: safeTask.id });
+      const conversation = res.data.conversation;
+      navigate(`/messages?conversationId=${conversation.id}`);
+    } catch (err: unknown) {
+      console.error("Failed to apply for task", err);
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response: { data?: { error?: string } } }).response?.data
+              ?.error
+          : undefined;
+      setApplyError(message || "Failed to apply for this task.");
+    } finally {
+      setIsApplying(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) {
@@ -307,13 +341,27 @@ export default function TaskDetails() {
         </div>
       </div>
 
+      {applyError && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 md:bottom-28 z-[60] max-w-sm w-[calc(100%-2rem)]">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive shadow-lg">
+            {applyError}
+          </div>
+        </div>
+      )}
+
       {/* Floating Apply Action */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-card/80 backdrop-blur-md border-t border-border z-50 md:hidden">
         <Button
           size="lg"
           className="w-full text-lg shadow-lg shadow-primary/25"
+          onClick={handleApply}
+          disabled={isApplying || safeTask.status !== "open"}
         >
-          Apply for ₹{safeTask.budget || 0}
+          {isApplying
+            ? "Applying..."
+            : safeTask.status !== "open"
+              ? "Task in Progress"
+              : `Apply for ₹${safeTask.budget || 0}`}
         </Button>
       </div>
 
@@ -322,9 +370,15 @@ export default function TaskDetails() {
         <Button
           size="lg"
           className="rounded-full px-8 py-6 text-lg shadow-xl shadow-primary/30 flex items-center gap-2 hover:scale-105 transition-transform"
+          onClick={handleApply}
+          disabled={isApplying || safeTask.status !== "open"}
         >
           <CheckCircle2 />
-          Apply for Task
+          {isApplying
+            ? "Applying..."
+            : safeTask.status !== "open"
+              ? "Task in Progress"
+              : "Apply for Task"}
         </Button>
       </div>
 

@@ -6,7 +6,12 @@ export async function getNotifications(req: Request, res: Response) {
     .sort({ createdAt: -1 })
     .lean();
 
-  res.json({ notifications: userNotifications });
+  const normalized = userNotifications.map((n) => ({
+    ...n,
+    id: n._id.toString(),
+  }));
+
+  res.json({ notifications: normalized });
 }
 
 export async function markAsRead(req: Request, res: Response) {
@@ -17,7 +22,8 @@ export async function markAsRead(req: Request, res: Response) {
   }
   notification.read = true;
   await notification.save();
-  res.json({ notification: notification.toObject() });
+  const notifObj = notification.toObject();
+  res.json({ notification: { ...notifObj, id: notifObj._id.toString() } });
 }
 
 export async function markAllAsRead(req: Request, res: Response) {
