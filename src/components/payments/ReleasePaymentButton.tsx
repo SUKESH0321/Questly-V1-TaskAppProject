@@ -5,16 +5,40 @@ import { usePaymentStore } from "@/stores/paymentStore";
 export function ReleasePaymentButton({ taskId }: { taskId: string }) {
   const releasePayment = usePaymentStore((s) => s.releasePayment);
   const [isReleasing, setIsReleasing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const handleRelease = async () => {
     setIsReleasing(true);
-    await releasePayment(taskId);
-    setIsReleasing(false);
+    setError(null);
+    setSuccess(false);
+    try {
+      await releasePayment(taskId);
+      setSuccess(true);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response: { data?: { error?: string } } }).response?.data
+              ?.error
+          : undefined;
+      setError(message || "Failed to release payment. Please try again.");
+    } finally {
+      setIsReleasing(false);
+    }
   };
 
   return (
-    <Button onClick={handleRelease} disabled={isReleasing}>
-      {isReleasing ? "Releasing..." : "Confirm Task & Release Payment"}
-    </Button>
+    <div className="flex flex-col gap-2">
+      <Button onClick={handleRelease} disabled={isReleasing || success}>
+        {isReleasing
+          ? "Releasing..."
+          : success
+            ? "Payment Released ✓"
+            : "Confirm Task & Release Payment"}
+      </Button>
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
+    </div>
   );
 }

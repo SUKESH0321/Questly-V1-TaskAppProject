@@ -121,13 +121,63 @@ export async function updateTask(req: Request, res: Response) {
     return;
   }
 
-  const { title, description, category, budget, status } = req.body;
-  if (title) task.title = title;
-  if (description) task.description = description;
-  if (category) task.category = category;
-  if (budget) task.budget = Number(budget);
-  if (status) task.status = status;
+  const { title, description, category, budget, location, time, date, status } = req.body;
+  if (title !== undefined) task.title = title;
+  if (description !== undefined) task.description = description;
+  if (category !== undefined) task.category = category;
+  if (budget !== undefined) task.budget = Number(budget);
+  if (location !== undefined) task.location = location;
+  if (time !== undefined) task.time = time;
+  if (date !== undefined) task.date = date;
 
+  // Validate status transitions
+  if (status !== undefined) {
+    const validStatuses = ["open", "in_progress", "completed"];
+    if (!validStatuses.includes(status)) {
+      res.status(400).json({ error: "Invalid task status." });
+      return;
+    }
+    task.status = status;
+  }
+
+  await task.save();
+
+  const saved = task.toObject();
+  res.json({ task: { ...saved, id: saved._id.toString() } });
+}
+
+export async function assignWorker(req: Request, res: Response) {
+  const { workerId } = req.body;
+  const task = await Task.findById(req.params.id);
+  if (!task) {
+    res.status(404).json({ error: "Task not found." });
+    return;
+  }
+
+  if (task.posterId.toString() !== req.userId) {
+    res.status(403).json({ error: "You can only assign a worker to your own tasks." });
+    return;
+  }
+
+  if (!workerId) {
+    res.status(400).json({ error: "workerId is required." });
+    return;
+  }
+
+  const worker = await User.findById(workerId);
+  if (!worker) {
+    res.status(404).json({ error: "Worker not found." });
+    return;
+  }
+
+  if (task.status !== "open") {
+    res.status(400).json({ error: "You can only assign a worker to an open task." });
+    return;
+  }
+
+  task.workerId = worker._id;
+  task.workerName = worker.name;
+  task.status = "in_progress";
   await task.save();
 
   const saved = task.toObject();

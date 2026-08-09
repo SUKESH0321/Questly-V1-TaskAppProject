@@ -20,13 +20,25 @@ interface PaymentModalProps {
 export function PaymentModal({ taskId, amount, open, onOpenChange, onSuccess }: PaymentModalProps) {
   const initiatePayment = usePaymentStore((s) => s.initiatePayment);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePay = async () => {
     setIsProcessing(true);
-    await initiatePayment(taskId, amount);
-    setIsProcessing(false);
-    onOpenChange(false);
-    onSuccess?.();
+    setError(null);
+    try {
+      await initiatePayment(taskId, amount);
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response: { data?: { error?: string } } }).response?.data
+              ?.error
+          : undefined;
+      setError(message || "Payment failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -41,6 +53,11 @@ export function PaymentModal({ taskId, amount, open, onOpenChange, onSuccess }: 
             This amount will be held in escrow until the task is marked complete and you release it to the tasker.
           </p>
           <p className="mt-4 text-2xl font-semibold">₹{amount}</p>
+          {error && (
+            <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
         </div>
 
         <DialogFooter>

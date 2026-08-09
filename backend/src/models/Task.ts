@@ -18,6 +18,8 @@ export interface ITask extends Document {
   posterName: string;
   posterAvatar?: string;
   posterRating: number;
+  workerId?: mongoose.Types.ObjectId;
+  workerName?: string;
   createdAt: Date;
 }
 
@@ -38,6 +40,8 @@ const TaskSchema = new Schema<ITask>(
     posterName: { type: String, required: true },
     posterAvatar: { type: String, default: "" },
     posterRating: { type: Number, default: 5.0 },
+    workerId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    workerName: { type: String, default: "" },
   },
   { timestamps: true }
 );

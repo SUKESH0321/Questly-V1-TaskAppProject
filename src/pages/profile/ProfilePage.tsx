@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useTaskStore } from "@/stores/taskStore";
+import { usePaymentStore } from "@/stores/paymentStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,26 +20,36 @@ import {
   Clock,
   DollarSign,
   ShieldCheck,
+  Briefcase,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuthStore();
   const { tasks, fetchTasks } = useTaskStore();
+  const { fetchMyPayments } = usePaymentStore();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || "");
   const [editPhone, setEditPhone] = useState(user?.phone || "");
   const [editLocation, setEditLocation] = useState(user?.location || "");
+  const [earned, setEarned] = useState(0);
 
-  // Fetch tasks on mount
+  // Fetch tasks and payments on mount
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    fetchMyPayments().then((payments) => {
+      const released = payments
+        .filter((p) => p.status === "released" && p.payeeId === user?.id)
+        .reduce((sum, p) => sum + p.amount, 0);
+      setEarned(released);
+    });
+  }, [fetchTasks, fetchMyPayments, user?.id]);
 
   const userTasks = tasks.filter((t) => t.posterId === user?.id);
+  const workingTasks = tasks.filter((t) => t.workerId === user?.id);
   const completedTasks = userTasks.filter((t) => t.status === "completed");
-  const activeTasks = userTasks.filter((t) => t.status === "open");
+  const activeTasks = userTasks.filter((t) => t.status === "open" || t.status === "in_progress");
 
   const handleSaveProfile = async () => {
     await updateUser({ name: editName, phone: editPhone, location: editLocation });
@@ -55,6 +66,18 @@ export default function ProfilePage() {
     .map((n) => n[0])
     .join("")
     .toUpperCase() || "U";
+
+  const statusBadge = (status: string) => {
+    if (status === "open") return "bg-amber-500/10 text-amber-500";
+    if (status === "in_progress") return "bg-blue-500/10 text-blue-500";
+    return "bg-accent/10 text-accent";
+  };
+
+  const statusLabel = (status: string) => {
+    if (status === "open") return "Open";
+    if (status === "in_progress") return "In Progress";
+    return "Completed";
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
@@ -152,7 +175,7 @@ export default function ProfilePage() {
             <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent mb-2">
               <DollarSign size={20} />
             </div>
-            <span className="text-2xl font-bold">₹0</span>
+            <span className="text-2xl font-bold">₹{earned}</span>
             <span className="text-xs text-muted-foreground">Earned</span>
           </CardContent>
         </Card>
@@ -167,9 +190,9 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      {/* My Tasks */}
+      {/* My Posted Tasks */}
       <section>
-        <h2 className="text-xl font-bold mb-4">My Tasks</h2>
+        <h2 className="text-xl font-bold mb-4">My Posted Tasks</h2>
         {userTasks.length === 0 ? (
           <div className="bg-muted/50 rounded-2xl p-8 text-center border border-border">
             <User size={40} className="mx-auto text-muted-foreground mb-3" />
@@ -188,23 +211,56 @@ export default function ProfilePage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-foreground truncate">{task.title}</h3>
                   <p className="text-sm text-muted-foreground">{task.category} • ₹{task.budget}</p>
+                  {task.workerName && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Tasker: <span className="font-medium text-foreground">{task.workerName}</span>
+                    </p>
+                  )}
                 </div>
-                <Badge
-                  className={
-                    task.status === "open"
-                      ? "bg-amber-500/10 text-amber-500"
-                      : task.status === "in_progress"
-                      ? "bg-blue-500/10 text-blue-500"
-                      : "bg-accent/10 text-accent"
-                  }
-                >
-                  {task.status === "open" ? "Open" : task.status === "in_progress" ? "In Progress" : "Completed"}
+                <Badge className={statusBadge(task.status)}>
+                  {statusLabel(task.status)}
                 </Badge>
               </div>
             ))}
           </div>
         )}
       </section>
+
+      {/* Tasks I'm Working On (Tasker side) */}
+      {(user?.role === "tasker" || user?.role === "both") && (
+        <section>
+          <h2 className="text-xl font-bold mb-4">Tasks I'm Working On</h2>
+          {workingTasks.length === 0 ? (
+            <div className="bg-muted/50 rounded-2xl p-8 text-center border border-border">
+              <Briefcase size={40} className="mx-auto text-muted-foreground mb-3" />
+              <h3 className="font-medium text-foreground">No assigned tasks yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">Browse tasks and apply to start working!</p>
+              <Button className="mt-4" onClick={() => navigate("/tasks")}>Browse Tasks</Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {workingTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="bg-card border border-border rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/tasks/${task.id}`)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground truncate">{task.title}</h3>
+                    <p className="text-sm text-muted-foreground">{task.category} • ₹{task.budget}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Posted by: <span className="font-medium text-foreground">{task.posterName}</span>
+                    </p>
+                  </div>
+                  <Badge className={statusBadge(task.status)}>
+                    {statusLabel(task.status)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Settings Section */}
       <section>
