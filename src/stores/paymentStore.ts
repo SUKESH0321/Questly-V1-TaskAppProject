@@ -9,6 +9,8 @@ interface PaymentState {
   releasePayment: (taskId: string) => Promise<void>;
   refundPayment: (taskId: string) => Promise<void>;
   disputePayment: (taskId: string) => void;
+  fetchPayment: (taskId: string) => Promise<Payment | undefined>;
+  fetchMyPayments: () => Promise<Payment[]>;
   getPayment: (taskId: string) => Payment | undefined;
 }
 
@@ -38,6 +40,38 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
     } catch (err) {
       console.error("Payment release failed", err);
       throw err;
+    }
+  },
+
+  fetchPayment: async (taskId) => {
+    try {
+      const res = await api.get(`/payments/${taskId}`);
+      const payment = res.data.payment;
+      if (payment) {
+        set((state) => ({
+          payments: { ...state.payments, [taskId]: payment },
+        }));
+      }
+      return payment;
+    } catch {
+      // 404 means no payment exists yet — that's fine
+      return undefined;
+    }
+  },
+
+  fetchMyPayments: async () => {
+    try {
+      const res = await api.get("/payments/mine");
+      const payments = Array.isArray(res.data?.payments) ? res.data.payments : [];
+      const byTask: Record<string, Payment> = {};
+      payments.forEach((p: Payment) => {
+        byTask[p.taskId] = p;
+      });
+      set((state) => ({ payments: { ...state.payments, ...byTask } }));
+      return payments;
+    } catch (err) {
+      console.error("Failed to fetch my payments", err);
+      return [];
     }
   },
 

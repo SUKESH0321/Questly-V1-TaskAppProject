@@ -18,6 +18,8 @@ export interface Task {
   posterName: string;
   posterAvatar?: string;
   posterRating: number;
+  workerId?: string;
+  workerName?: string;
   createdAt: string;
 }
 
@@ -26,6 +28,9 @@ interface TaskState {
   isLoading: boolean;
   fetchTasks: (filters?: TaskFilters) => Promise<void>;
   addTask: (task: { title: string; category: string; description: string; budget: number; location: string; time: string; date: string }) => Promise<Task>;
+  updateTask: (id: string, data: Partial<Task>) => Promise<Task>;
+  updateTaskStatus: (id: string, status: Task["status"]) => Promise<Task>;
+  assignWorker: (id: string, workerId: string) => Promise<Task>;
   getTaskById: (id: string) => Task | undefined;
   filterTasks: (filters: TaskFilters) => Task[];
 }
@@ -82,6 +87,52 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       return newTask;
     } catch (err) {
       console.error("Failed to create task", err);
+      throw err;
+    }
+  },
+
+  updateTask: async (id, data) => {
+    try {
+      const res = await api.patch(`/tasks/${id}`, data);
+      const rawTask = res.data?.task;
+      if (!rawTask) {
+        throw new Error("Task update did not return a task");
+      }
+      const updatedTask = {
+        ...rawTask,
+        id: rawTask.id ?? rawTask._id?.toString?.(),
+      };
+      set((state) => ({
+        tasks: state.tasks.map((t) => (t.id === id ? updatedTask : t)),
+      }));
+      return updatedTask;
+    } catch (err) {
+      console.error("Failed to update task", err);
+      throw err;
+    }
+  },
+
+  updateTaskStatus: async (id, status) => {
+    return get().updateTask(id, { status });
+  },
+
+  assignWorker: async (id, workerId) => {
+    try {
+      const res = await api.post(`/tasks/${id}/assign`, { workerId });
+      const rawTask = res.data?.task;
+      if (!rawTask) {
+        throw new Error("Worker assignment did not return a task");
+      }
+      const updatedTask = {
+        ...rawTask,
+        id: rawTask.id ?? rawTask._id?.toString?.(),
+      };
+      set((state) => ({
+        tasks: state.tasks.map((t) => (t.id === id ? updatedTask : t)),
+      }));
+      return updatedTask;
+    } catch (err) {
+      console.error("Failed to assign worker", err);
       throw err;
     }
   },

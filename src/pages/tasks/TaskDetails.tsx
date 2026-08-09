@@ -9,13 +9,25 @@ import {
   Bookmark,
   ShieldCheck,
   CheckCircle2,
+  Pencil,
+  Play,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import api from "@/lib/api";
 import { usePaymentStore } from "@/stores/paymentStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useTaskStore } from "@/stores/taskStore";
 import { PaymentModal } from "@/components/payments/PaymentModal";
 import { ReleasePaymentButton } from "@/components/payments/ReleasePaymentButton";
 import { EscrowBadge } from "@/components/shared/EscrowBadge";
@@ -32,15 +44,30 @@ interface Task {
   date: string;
   imageUrl?: string;
   status: string;
+  posterId: string;
   posterName: string;
   posterAvatar?: string;
   posterRating: number;
+  workerId?: string;
+  workerName?: string;
 }
+
+const CATEGORIES = [
+  "Cleaning",
+  "Repairs",
+  "Moving",
+  "Delivery",
+  "Tutoring",
+  "Plumbing",
+  "Furniture Assembly",
+  "Other",
+];
 
 export default function TaskDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { updateTask, updateTaskStatus } = useTaskStore();
   const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +75,100 @@ export default function TaskDetails() {
   const [applyError, setApplyError] = useState<string | null>(null);
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
   const payment = usePaymentStore((s) =>
     task ? s.getPayment(task.id) : undefined,
   );
+  const fetchPayment = usePaymentStore((s) => s.fetchPayment);
   const safeTask = task ?? null;
+
+  const isPoster = !!user && !!safeTask && user.id === safeTask.posterId;
+  const isWorker = !!user && !!safeTask && user.id === safeTask.workerId;
+  const canApply =
+    !!user &&
+    !!safeTask &&
+    !isPoster &&
+    !isWorker &&
+    (user.role === "tasker" || user.role === "both") &&
+    safeTask.status === "open";
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    category: "",
+    budget: 0,
+    location: "",
+    time: "",
+    date: "",
+  });
+
+  const openEditModal = () => {
+    if (!safeTask) return;
+    setEditForm({
+      title: safeTask.title,
+      description: safeTask.description,
+      category: safeTask.category,
+      budget: safeTask.budget,
+      location: safeTask.location,
+      time: safeTask.time,
+      date: safeTask.date,
+    });
+    setEditError(null);
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!safeTask) return;
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      const updated = await updateTask(safeTask.id, {
+        title: editForm.title,
+        description: editForm.description,
+        category: editForm.category,
+        budget: editForm.budget,
+        location: editForm.location,
+        time: editForm.time,
+        date: editForm.date,
+      });
+      setTask(updated);
+      setEditModalOpen(false);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response: { data?: { error?: string } } }).response?.data
+              ?.error
+          : undefined;
+      setEditError(message || "Failed to update task. Please try again.");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleStatusChange = async (status: "in_progress" | "completed") => {
+    if (!safeTask) return;
+    setIsUpdatingStatus(true);
+    setActionError(null);
+    try {
+      const updated = await updateTaskStatus(safeTask.id, status);
+      setTask(updated);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response: { data?: { error?: string } } }).response?.data
+              ?.error
+          : undefined;
+      setActionError(message || "Failed to update task status.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const handleApply = async () => {
     if (!safeTask) return;
@@ -95,6 +212,9 @@ export default function TaskDetails() {
         setTask(fetchedTask || null);
         if (!fetchedTask) {
           setError("Task not found");
+        } else {
+          // Load payment state for this task from backend
+          fetchPayment(fetchedTask.id);
         }
       } catch (err) {
         setError("Task not found");
@@ -104,7 +224,7 @@ export default function TaskDetails() {
       }
     };
     fetchTask();
-  }, [id]);
+  }, [id, fetchPayment]);
 
   if (isLoading) {
     return (
@@ -198,18 +318,46 @@ export default function TaskDetails() {
                     Open
                   </Badge>
                 )}
+                {safeTask.status === "in_progress" && (
+                  <Badge
+                    variant="outline"
+                    className="text-blue-500 border-blue-500/30 bg-blue-500/5"
+                  >
+                    In Progress
+                  </Badge>
+                )}
+                {safeTask.status === "completed" && (
+                  <Badge
+                    variant="outline"
+                    className="text-accent border-accent/30 bg-accent/5"
+                  >
+                    Completed
+                  </Badge>
+                )}
                 {payment && <EscrowBadge status={payment.status} />}
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 {safeTask.title || "Untitled task"}
               </h1>
+              {safeTask.workerName && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Assigned to: <span className="font-medium text-foreground">{safeTask.workerName}</span>
+                </p>
+              )}
             </div>
 
-            <div className="text-left md:text-right">
-              <div className="text-sm text-muted-foreground mb-1">Budget</div>
-              <div className="text-3xl font-bold text-primary">
-                ₹{safeTask.budget || 0}
+            <div className="flex flex-col items-start md:items-end gap-2">
+              <div className="text-left md:text-right">
+                <div className="text-sm text-muted-foreground mb-1">Budget</div>
+                <div className="text-3xl font-bold text-primary">
+                  ₹{safeTask.budget || 0}
+                </div>
               </div>
+              {isPoster && (
+                <Button variant="outline" size="sm" onClick={openEditModal}>
+                  <Pencil size={14} className="mr-1" /> Edit Task
+                </Button>
+              )}
             </div>
           </div>
 
@@ -253,36 +401,103 @@ export default function TaskDetails() {
               </p>
             </div>
 
-            {/* Payment / Escrow Section */}
-            <div>
-              <h2 className="text-xl font-bold mb-4">Payment</h2>
-              <div className="p-4 rounded-2xl border border-border bg-muted/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
+            {/* Status Management (Poster only) */}
+            {isPoster && safeTask.status !== "completed" && (
+              <div>
+                <h2 className="text-xl font-bold mb-4">Task Status</h2>
+                <div className="p-4 rounded-2xl border border-border bg-muted/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <p className="text-sm text-muted-foreground">
-                    {!payment && "Payment hasn't been made for this task yet."}
-                    {payment?.status === "pending" &&
-                      "Payment is being processed."}
-                    {payment?.status === "held" &&
-                      "Payment is held in escrow until the task is completed."}
-                    {payment?.status === "released" &&
-                      "Payment has been released to the tasker."}
-                    {payment?.status === "refunded" && "Payment was refunded."}
-                    {payment?.status === "disputed" &&
-                      "Payment is under dispute."}
+                    {safeTask.status === "open"
+                      ? "This task is open. Mark it as in progress once a tasker is assigned."
+                      : "This task is in progress. Mark it as complete when the work is done."}
                   </p>
+                  <div className="flex flex-wrap gap-2">
+                    {safeTask.status === "open" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleStatusChange("in_progress")}
+                        disabled={isUpdatingStatus}
+                      >
+                        <Play size={14} className="mr-1" />
+                        {isUpdatingStatus ? "Updating..." : "Mark In Progress"}
+                      </Button>
+                    )}
+                    {safeTask.status === "in_progress" && (
+                      <Button
+                        onClick={() => handleStatusChange("completed")}
+                        disabled={isUpdatingStatus}
+                      >
+                        <Check size={14} className="mr-1" />
+                        {isUpdatingStatus ? "Updating..." : "Mark Complete"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-
-                {!payment && (
-                  <Button onClick={() => setPaymentModalOpen(true)}>
-                    Pay & Confirm ₹{safeTask.budget || 0}
-                  </Button>
-                )}
-
-                {payment?.status === "held" && (
-                  <ReleasePaymentButton taskId={safeTask.id} />
-                )}
               </div>
-            </div>
+            )}
+
+            {/* Payment / Escrow Section (Poster only) */}
+            {isPoster && (
+              <div>
+                <h2 className="text-xl font-bold mb-4">Payment</h2>
+                <div className="p-4 rounded-2xl border border-border bg-muted/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {!payment && "Payment hasn't been made for this task yet."}
+                      {payment?.status === "pending" &&
+                        "Payment is being processed."}
+                      {payment?.status === "held" &&
+                        "Payment is held in escrow until the task is completed."}
+                      {payment?.status === "released" &&
+                        "Payment has been released to the tasker."}
+                      {payment?.status === "refunded" && "Payment was refunded."}
+                      {payment?.status === "disputed" &&
+                        "Payment is under dispute."}
+                    </p>
+                    {!payment && !safeTask.workerId && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Assign a tasker to this task before making a payment.
+                      </p>
+                    )}
+                  </div>
+
+                  {!payment && safeTask.workerId && (
+                    <Button onClick={() => setPaymentModalOpen(true)}>
+                      Pay & Confirm ₹{safeTask.budget || 0}
+                    </Button>
+                  )}
+
+                  {payment?.status === "held" && (
+                    <ReleasePaymentButton taskId={safeTask.id} />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Worker status action */}
+            {isWorker && safeTask.status === "in_progress" && (
+              <div>
+                <h2 className="text-xl font-bold mb-4">Your Work</h2>
+                <div className="p-4 rounded-2xl border border-border bg-muted/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    You're assigned to this task. Mark it complete when the work is done.
+                  </p>
+                  <Button
+                    onClick={() => handleStatusChange("completed")}
+                    disabled={isUpdatingStatus}
+                  >
+                    <Check size={14} className="mr-1" />
+                    {isUpdatingStatus ? "Updating..." : "Mark Complete"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {actionError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {actionError}
+              </div>
+            )}
 
             <div>
               <h2 className="text-xl font-bold mb-4">Posted By</h2>
@@ -349,38 +564,36 @@ export default function TaskDetails() {
         </div>
       )}
 
-      {/* Floating Apply Action */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-card/80 backdrop-blur-md border-t border-border z-50 md:hidden">
-        <Button
-          size="lg"
-          className="w-full text-lg shadow-lg shadow-primary/25"
-          onClick={handleApply}
-          disabled={isApplying || safeTask.status !== "open"}
-        >
-          {isApplying
-            ? "Applying..."
-            : safeTask.status !== "open"
-              ? "Task in Progress"
+      {/* Floating Apply Action (mobile) */}
+      {canApply && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-card/80 backdrop-blur-md border-t border-border z-50 md:hidden">
+          <Button
+            size="lg"
+            className="w-full text-lg shadow-lg shadow-primary/25"
+            onClick={handleApply}
+            disabled={isApplying}
+          >
+            {isApplying
+              ? "Applying..."
               : `Apply for ₹${safeTask.budget || 0}`}
-        </Button>
-      </div>
+          </Button>
+        </div>
+      )}
 
       {/* Desktop Apply Action */}
-      <div className="hidden md:block fixed bottom-8 right-8 z-50">
-        <Button
-          size="lg"
-          className="rounded-full px-8 py-6 text-lg shadow-xl shadow-primary/30 flex items-center gap-2 hover:scale-105 transition-transform"
-          onClick={handleApply}
-          disabled={isApplying || safeTask.status !== "open"}
-        >
-          <CheckCircle2 />
-          {isApplying
-            ? "Applying..."
-            : safeTask.status !== "open"
-              ? "Task in Progress"
-              : "Apply for Task"}
-        </Button>
-      </div>
+      {canApply && (
+        <div className="hidden md:block fixed bottom-8 right-8 z-50">
+          <Button
+            size="lg"
+            className="rounded-full px-8 py-6 text-lg shadow-xl shadow-primary/30 flex items-center gap-2 hover:scale-105 transition-transform"
+            onClick={handleApply}
+            disabled={isApplying}
+          >
+            <CheckCircle2 />
+            {isApplying ? "Applying..." : "Apply for Task"}
+          </Button>
+        </div>
+      )}
 
       <PaymentModal
         taskId={safeTask.id}
@@ -388,6 +601,112 @@ export default function TaskDetails() {
         open={paymentModalOpen}
         onOpenChange={setPaymentModalOpen}
       />
+
+      {/* Edit Task Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Title</label>
+              <Input
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, title: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Description</label>
+              <textarea
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[100px]"
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, description: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Category</label>
+              <select
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                value={editForm.category}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, category: e.target.value }))
+                }
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Budget (₹)</label>
+              <Input
+                type="number"
+                value={editForm.budget}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    budget: parseInt(e.target.value) || 0,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Location</label>
+              <Input
+                value={editForm.location}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, location: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Time</label>
+                <Input
+                  value={editForm.time}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, time: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Date</label>
+                <Input
+                  value={editForm.date}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, date: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            {editError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {editError}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditModalOpen(false)}
+              disabled={isSavingEdit}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit}>
+              {isSavingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

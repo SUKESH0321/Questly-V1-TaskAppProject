@@ -16,16 +16,33 @@ export async function initiatePayment(req: Request, res: Response) {
     return;
   }
 
+  // Only the poster (task creator) can pay/hold payment for their own task
+  if (task.posterId.toString() !== req.userId) {
+    res
+      .status(403)
+      .json({ error: "Only the task poster can pay for this task." });
+    return;
+  }
+
   const existing = await Payment.findOne({ taskId });
   if (existing) {
     res.status(409).json({ error: "Payment already initiated for this task." });
     return;
   }
 
+  // Payee is the assigned worker (tasker) if present, otherwise nobody is paid
+  if (!task.workerId) {
+    res
+      .status(400)
+      .json({ error: "A tasker must be assigned to this task before payment can be made." });
+    return;
+  }
+
   const newPayment = new Payment({
     taskId,
     payerId: req.userId!,
-    payeeId: task.posterId,
+    payeeId: task.workerId,
+    payeeName: task.workerName || "",
     amount: task.budget,
     status: "held",
   });
@@ -43,6 +60,14 @@ export async function releasePayment(req: Request, res: Response) {
     return;
   }
 
+  // Only the payer (poster) can release the escrowed payment
+  if (payment.payerId.toString() !== req.userId) {
+    res
+      .status(403)
+      .json({ error: "Only the payer can release this payment." });
+    return;
+  }
+
   if (payment.status !== "held") {
     res
       .status(400)
@@ -53,6 +78,9 @@ export async function releasePayment(req: Request, res: Response) {
   payment.status = "released";
   payment.releasedAt = new Date();
   await payment.save();
+
+  // When payment is released, mark the task as completed
+  await Task.findByIdAndUpdate(payment.taskId, { status: "completed" });
 
   const paymentObj = payment.toObject();
   res.json({ payment: { ...paymentObj, id: paymentObj._id.toString() } });
@@ -66,4 +94,19 @@ export async function getPayment(req: Request, res: Response) {
   }
 
   res.json({ payment: { ...payment, id: payment._id.toString() } });
+}
+
+export async function getMyPayments(req: Request, res: Response) {
+  const payments = await Payment.find({
+    $or: [{ payerId: req.userId }, { payeeId: req.userId }],
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const normalized = payments.map((p) => ({
+    ...p,
+    id: p._id.toString(),
+  }));
+
+  res.json({ payments: normalized });
 }

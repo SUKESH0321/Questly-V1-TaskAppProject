@@ -6,6 +6,7 @@ export interface IPayment extends Document {
   taskId: mongoose.Types.ObjectId;
   payerId: mongoose.Types.ObjectId;
   payeeId: mongoose.Types.ObjectId;
+  payeeName?: string;
   amount: number;
   status: EscrowStatus;
   createdAt: Date;
@@ -17,6 +18,7 @@ const PaymentSchema = new Schema<IPayment>(
     taskId: { type: Schema.Types.ObjectId, ref: "Task", required: true },
     payerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     payeeId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    payeeName: { type: String, default: "" },
     amount: { type: Number, required: true },
     status: {
       type: String,
