@@ -25,8 +25,12 @@ export interface Task {
 
 interface TaskState {
   tasks: Task[];
+  myPostedTasks: Task[];
+  myWorkedTasks: Task[];
   isLoading: boolean;
   fetchTasks: (filters?: TaskFilters) => Promise<void>;
+  fetchMyPostedTasks: () => Promise<Task[]>;
+  fetchMyWorkedTasks: () => Promise<Task[]>;
   addTask: (task: { title: string; category: string; description: string; budget: number; location: string; time: string; date: string }) => Promise<Task>;
   updateTask: (id: string, data: Partial<Task>) => Promise<Task>;
   updateTaskStatus: (id: string, status: Task["status"]) => Promise<Task>;
@@ -47,6 +51,8 @@ export interface TaskFilters {
 
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
+  myPostedTasks: [],
+  myWorkedTasks: [],
   isLoading: false,
 
   fetchTasks: async (filters?: TaskFilters) => {
@@ -69,6 +75,38 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       set({ tasks: taskList, isLoading: false });
     } catch {
       set({ tasks: [], isLoading: false });
+    }
+  },
+
+  fetchMyPostedTasks: async () => {
+    try {
+      const res = await api.get("/tasks/posted");
+      const rawTasks = Array.isArray(res.data?.tasks) ? res.data.tasks : [];
+      const list = rawTasks.map((t: any) => ({
+        ...t,
+        id: t.id ?? t._id?.toString?.(),
+      }));
+      set({ myPostedTasks: list });
+      return list;
+    } catch (err) {
+      console.error("Failed to fetch my posted tasks", err);
+      return [];
+    }
+  },
+
+  fetchMyWorkedTasks: async () => {
+    try {
+      const res = await api.get("/tasks/worked");
+      const rawTasks = Array.isArray(res.data?.tasks) ? res.data.tasks : [];
+      const list = rawTasks.map((t: any) => ({
+        ...t,
+        id: t.id ?? t._id?.toString?.(),
+      }));
+      set({ myWorkedTasks: list });
+      return list;
+    } catch (err) {
+      console.error("Failed to fetch my worked tasks", err);
+      return [];
     }
   },
 
