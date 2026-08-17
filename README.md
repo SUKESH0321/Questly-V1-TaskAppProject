@@ -2,6 +2,24 @@
 
 A hyperlocal task marketplace application for posting, browsing, and managing local tasks. Built with React, TypeScript, and Vite (frontend) and Express + MongoDB (backend).
 
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white&style=flat-square)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=flat-square)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square)
+![Zustand](https://img.shields.io/badge/Zustand-5-EC6E24?style=flat-square)
+![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white&style=flat-square)
+![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white&style=flat-square)
+
+---
+
+## Overview
+
+Questly connects people who need help with everyday tasks to nearby taskers in their local area. Users can post and browse tasks across categories like cleaning, plumbing, furniture assembly, delivery, and tutoring, then communicate, negotiate, and pay securely through the built-in escrow flow.
+
+- **Customers** can post tasks, review applicants, and release escrow payments.
+- **Taskers** can browse open tasks, apply, message customers, and get paid.
+- **Everyone** gets a shared dashboard, notifications, and a full messaging experience.
+
 ---
 
 ## Features
@@ -10,12 +28,12 @@ A hyperlocal task marketplace application for posting, browsing, and managing lo
 - **MongoDB Database** — All data is persisted in MongoDB using Mongoose ODM. Includes automatic seeding of demo data on first run.
 - **JWT Authentication** — Secure login and registration with bcrypt password hashing and JSON Web Token (JWT) based sessions. Tokens are stored in localStorage and sent as Bearer tokens.
 - **Authentication Flow** — Login, registration, role selection (Customer / Tasker / Both), and a multi-step tasker onboarding wizard.
-- **Task Management** — Create tasks via a step-by-step wizard (Details, Photos, Location, Budget, Time, Preview), browse tasks with search and filters, view task details, and track posted tasks.
+- **Task Management** — Create tasks via a step-by-step wizard (Details, Photos, Location, Budget, Time, Preview), browse tasks with search and filters, and view task details. Completed tasks are hidden from the public task list so only their poster (and the assigned worker) can see them on the profile.
 - **Advanced Filtering** — Search by keyword, filter by category, budget range, distance radius, minimum rating, and sort by date, price, or distance.
 - **Messaging** — Chat interface with conversation list, online indicators, and message bubbles. Real conversations and messages loaded from the API.
 - **Notifications** — Notification feed with read/unread state, filter by all or unread, and mark-as-read functionality synced with the backend.
 - **Escrow Payment Flow** — Initiate and release payments held in escrow, with a visual EscrowBadge showing payment status.
-- **Profile Page** — Editable profile, stats dashboard (completed/active tasks), task history filtered by user ID, and settings.
+- **Profile Page** — Editable profile, stats dashboard (completed/active tasks), and task history. "My Posted Tasks" and "Tasks I'm Working On" show active tasks only, while dedicated **"Completed Tasks I Posted"** (poster only) and **"Tasks I Finished"** (worker only) sections list all completed tasks.
 - **Loading States** — Skeleton loaders and loading indicators on all pages while data is being fetched from the API.
 - **Error Handling** — Graceful fallback states when the backend is unreachable or data is not found.
 - **Responsive Design** — Desktop sidebar layout with mobile bottom navigation and a floating action button.
@@ -87,6 +105,8 @@ questlyv1/
 ├── src/
 │   ├── assets/
 │   ├── components/
+│   │   ├── auth/
+│   │   │   └── ProtectedRoute.tsx
 │   │   ├── shared/
 │   │   │   ├── CategoryCard.tsx
 │   │   │   ├── EscrowBadge.tsx
@@ -111,7 +131,9 @@ questlyv1/
 │   │   ├── api.ts               # Axios client configured for backend (sends JWT Bearer token)
 │   │   └── utils.ts
 │   ├── pages/
-│   │   ├── Home.tsx
+│   │   ├── Home.tsx                 # Dashboard
+│   │   ├── NotFound.tsx             # 404 page
+│   │   ├── RouteError.tsx           # Router error boundary
 │   │   ├── auth/
 │   │   │   ├── Login.tsx
 │   │   │   ├── Register.tsx
@@ -163,8 +185,8 @@ questlyv1/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/questlyv1.git
-cd questlyv1
+git clone https://github.com/SUKESH0321/Questly-V1-TaskAppProject.git
+cd Questly-V1-TaskAppProject
 ```
 
 ### 2. Frontend Setup
@@ -259,25 +281,32 @@ cd backend && npm start
 
 ## API Endpoints
 
-| Method | Endpoint                                  | Auth Required | Description               |
-| ------ | ----------------------------------------- | ------------- | ------------------------- |
-| POST   | `/api/auth/register`                      | No            | Register a new user       |
-| POST   | `/api/auth/login`                         | No            | Login                     |
-| GET    | `/api/auth/me`                            | Yes           | Get current user          |
-| GET    | `/api/tasks`                              | No            | List tasks (with filters) |
-| GET    | `/api/tasks/:id`                          | No            | Get task by ID            |
-| POST   | `/api/tasks`                              | Yes           | Create a task             |
-| PATCH  | `/api/tasks/:id`                          | Yes           | Update a task             |
-| POST   | `/api/payments/initiate`                  | Yes           | Initiate payment          |
-| POST   | `/api/payments/release/:taskId`           | Yes           | Release held payment      |
-| GET    | `/api/payments/:taskId`                   | Yes           | Get payment by task ID    |
-| GET    | `/api/conversations`                      | Yes           | List user conversations   |
-| GET    | `/api/conversations/:id/messages`         | Yes           | Get messages              |
-| POST   | `/api/conversations/:id/messages`         | Yes           | Send a message            |
-| GET    | `/api/notifications`                      | Yes           | List notifications        |
-| PATCH  | `/api/notifications/:id/read`             | Yes           | Mark notification as read |
-| PATCH  | `/api/notifications/read-all`             | Yes           | Mark all as read          |
-| GET    | `/api/health`                             | No            | Health check              |
+| Method | Endpoint                                  | Auth Required | Description                |
+| ------ | ----------------------------------------- | ------------- | -------------------------- |
+| POST   | `/api/auth/register`                      | No            | Register a new user        |
+| POST   | `/api/auth/login`                         | No            | Login                      |
+| GET    | `/api/auth/me`                            | Yes           | Get current user           |
+| PATCH  | `/api/auth/me`                            | Yes           | Update current user        |
+| GET    | `/api/tasks`                              | No            | List tasks (with filters); excludes completed tasks |
+| GET    | `/api/tasks/posted`                       | Yes           | Current user's posted tasks (incl. completed)       |
+| GET    | `/api/tasks/worked`                       | Yes           | Current user's worked tasks (incl. completed)       |
+| GET    | `/api/tasks/:id`                          | No            | Get task by ID             |
+| POST   | `/api/tasks`                              | Yes           | Create a task              |
+| PATCH  | `/api/tasks/:id`                          | Yes           | Update a task              |
+| POST   | `/api/tasks/:id/assign`                   | Yes           | Assign a worker to a task  |
+| POST   | `/api/payments/initiate`                  | Yes           | Initiate payment           |
+| POST   | `/api/payments/release/:taskId`           | Yes           | Release held payment       |
+| GET    | `/api/payments/mine`                      | Yes           | Get current user's payments|
+| GET    | `/api/payments/:taskId`                   | Yes           | Get payment by task ID     |
+| GET    | `/api/conversations`                      | Yes           | List user conversations    |
+| POST   | `/api/conversations`                      | Yes           | Create a conversation      |
+| GET    | `/api/conversations/:id`                  | Yes           | Get conversation by ID     |
+| GET    | `/api/conversations/:id/messages`         | Yes           | Get messages               |
+| POST   | `/api/conversations/:id/messages`         | Yes           | Send a message             |
+| GET    | `/api/notifications`                      | Yes           | List notifications         |
+| PATCH  | `/api/notifications/:id/read`             | Yes           | Mark notification as read  |
+| PATCH  | `/api/notifications/read-all`             | Yes           | Mark all as read           |
+| GET    | `/api/health`                             | No            | Health check               |
 
 > **Auth Required** endpoints expect a `Authorization: Bearer <token>` header. The token is obtained from the login or register response.
 
@@ -285,20 +314,24 @@ cd backend && npm start
 
 ## Routes
 
-| Route                     | Page                  | Layout      |
-| ------------------------- | --------------------- | ----------- |
-| `/`                       | Dashboard             | MainLayout  |
-| `/tasks`                  | Browse Tasks          | MainLayout  |
-| `/tasks/create`           | Create Task           | MainLayout  |
-| `/tasks/success`          | Task Posted           | MainLayout  |
-| `/tasks/:id`              | Task Details          | MainLayout  |
-| `/profile`                | User Profile          | MainLayout  |
-| `/messages`               | Messages              | MainLayout  |
-| `/notifications`          | Notifications         | MainLayout  |
-| `/auth/login`             | Login                 | AuthLayout  |
-| `/auth/register`          | Register              | AuthLayout  |
-| `/auth/role-selection`    | Choose Role           | AuthLayout  |
-| `/auth/onboarding`        | Tasker Onboarding     | AuthLayout  |
+| Route                | Page                  | Layout      |
+| -------------------- | --------------------- | ----------- |
+| `/`                  | Login                 | AuthLayout  |
+| `/login`             | Login                 | AuthLayout  |
+| `/register`          | Register              | AuthLayout  |
+| `/role-selection`    | Choose Role           | AuthLayout  |
+| `/onboarding`        | Tasker Onboarding     | AuthLayout  |
+| `/home`              | Dashboard (Home)      | MainLayout  |
+| `/tasks`             | Browse Tasks          | MainLayout  |
+| `/tasks/create`      | Create Task           | MainLayout  |
+| `/tasks/success`     | Task Posted           | MainLayout  |
+| `/tasks/:id`         | Task Details          | MainLayout  |
+| `/profile`           | User Profile          | MainLayout  |
+| `/messages`          | Messages              | MainLayout  |
+| `/notifications`     | Notifications         | MainLayout  |
+| `*`                  | Not Found (404)       | —           |
+
+> Routes under `MainLayout` are wrapped in a `ProtectedRoute` that redirects unauthenticated users to `/login`. The tasker onboarding wizard requires a `tasker` role to complete.
 
 ---
 
@@ -330,7 +363,7 @@ The original backend used an in-memory data store (`backend/src/data/store.ts`) 
 
 ## Contributors
 
-- Your Name — [@your-username](https://github.com/your-username)
+- Sukesh — [@SUKESH0321](https://github.com/SUKESH0321)
 
 Contributions are welcome. Please open an issue or submit a pull request.
 

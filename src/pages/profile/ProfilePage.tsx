@@ -26,7 +26,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuthStore();
-  const { tasks, fetchTasks } = useTaskStore();
+  const { myPostedTasks, myWorkedTasks, fetchMyPostedTasks, fetchMyWorkedTasks } = useTaskStore();
   const { fetchMyPayments } = usePaymentStore();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -35,21 +35,27 @@ export default function ProfilePage() {
   const [editLocation, setEditLocation] = useState(user?.location || "");
   const [earned, setEarned] = useState(0);
 
-  // Fetch tasks and payments on mount
+  // Fetch the user's own posted and worked tasks (including completed),
+  // plus payments on mount
   useEffect(() => {
-    fetchTasks();
+    fetchMyPostedTasks();
+    fetchMyWorkedTasks();
     fetchMyPayments().then((payments) => {
       const released = payments
         .filter((p) => p.status === "released" && p.payeeId === user?.id)
         .reduce((sum, p) => sum + p.amount, 0);
       setEarned(released);
     });
-  }, [fetchTasks, fetchMyPayments, user?.id]);
+  }, [fetchMyPostedTasks, fetchMyWorkedTasks, fetchMyPayments, user?.id]);
 
-  const userTasks = tasks.filter((t) => t.posterId === user?.id);
-  const workingTasks = tasks.filter((t) => t.workerId === user?.id);
+  // My posted tasks (all statuses, including completed) - only visible to the poster
+  const userTasks = myPostedTasks;
+  // Tasks I've worked on (all statuses, including completed) - only visible to the worker
+  const workingTasks = myWorkedTasks;
   const completedTasks = userTasks.filter((t) => t.status === "completed");
   const activeTasks = userTasks.filter((t) => t.status === "open" || t.status === "in_progress");
+  const activeWorkingTasks = workingTasks.filter((t) => t.status === "open" || t.status === "in_progress");
+  const finishedTasks = workingTasks.filter((t) => t.status === "completed");
 
   const handleSaveProfile = async () => {
     await updateUser({ name: editName, phone: editPhone, location: editLocation });
@@ -190,19 +196,19 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      {/* My Posted Tasks */}
+      {/* My Posted Tasks (active only; completed posted tasks shown below) */}
       <section>
         <h2 className="text-xl font-bold mb-4">My Posted Tasks</h2>
-        {userTasks.length === 0 ? (
+        {activeTasks.length === 0 ? (
           <div className="bg-muted/50 rounded-2xl p-8 text-center border border-border">
             <User size={40} className="mx-auto text-muted-foreground mb-3" />
-            <h3 className="font-medium text-foreground">No tasks yet</h3>
+            <h3 className="font-medium text-foreground">No active tasks yet</h3>
             <p className="text-sm text-muted-foreground mt-1">Post your first task to get started!</p>
             <Button className="mt-4" onClick={() => navigate("/tasks/create")}>Post a Task</Button>
           </div>
         ) : (
           <div className="space-y-3">
-            {userTasks.map((task) => (
+            {activeTasks.map((task) => (
               <div
                 key={task.id}
                 className="bg-card border border-border rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer"
@@ -226,11 +232,48 @@ export default function ProfilePage() {
         )}
       </section>
 
-      {/* Tasks I'm Working On (Tasker side) */}
+      {/* Completed Tasks I Posted (only visible to the poster) */}
+      <section>
+        <h2 className="text-xl font-bold mb-4">Completed Tasks I Posted</h2>
+        {completedTasks.length === 0 ? (
+          <div className="bg-muted/50 rounded-2xl p-8 text-center border border-border">
+            <CheckCircle2 size={40} className="mx-auto text-muted-foreground mb-3" />
+            <h3 className="font-medium text-foreground">No completed tasks yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tasks you posted that get finished will show up here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {completedTasks.map((task) => (
+              <div
+                key={task.id}
+                className="bg-card border border-border rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer"
+                onClick={() => navigate(`/tasks/${task.id}`)}
+              >
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-foreground truncate">{task.title}</h3>
+                  <p className="text-sm text-muted-foreground">{task.category} • ₹{task.budget}</p>
+                  {task.workerName && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Completed by: <span className="font-medium text-foreground">{task.workerName}</span>
+                    </p>
+                  )}
+                </div>
+                <Badge className={statusBadge(task.status)}>
+                  {statusLabel(task.status)}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Tasks I'm Working On (Tasker side, active only; finished shown below) */}
       {(user?.role === "tasker" || user?.role === "both") && (
         <section>
           <h2 className="text-xl font-bold mb-4">Tasks I'm Working On</h2>
-          {workingTasks.length === 0 ? (
+          {activeWorkingTasks.length === 0 ? (
             <div className="bg-muted/50 rounded-2xl p-8 text-center border border-border">
               <Briefcase size={40} className="mx-auto text-muted-foreground mb-3" />
               <h3 className="font-medium text-foreground">No assigned tasks yet</h3>
@@ -239,7 +282,45 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {workingTasks.map((task) => (
+              {activeWorkingTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="bg-card border border-border rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/tasks/${task.id}`)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground truncate">{task.title}</h3>
+                    <p className="text-sm text-muted-foreground">{task.category} • ₹{task.budget}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Posted by: <span className="font-medium text-foreground">{task.posterName}</span>
+                    </p>
+                  </div>
+                  <Badge className={statusBadge(task.status)}>
+                    {statusLabel(task.status)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Tasks I Finished (Tasker side, completed tasks only) */}
+      {(user?.role === "tasker" || user?.role === "both") && (
+        <section>
+          <h2 className="text-xl font-bold mb-4">Tasks I Finished</h2>
+          {finishedTasks.length === 0 ? (
+            <div className="bg-muted/50 rounded-2xl p-8 text-center border border-border">
+              <CheckCircle2 size={40} className="mx-auto text-muted-foreground mb-3" />
+              <h3 className="font-medium text-foreground">No finished tasks yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Tasks you complete will show up here.
+              </p>
+              <Button className="mt-4" onClick={() => navigate("/tasks")}>Browse Tasks</Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {finishedTasks.map((task) => (
                 <div
                   key={task.id}
                   className="bg-card border border-border rounded-xl p-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer"

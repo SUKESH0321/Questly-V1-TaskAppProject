@@ -8,6 +8,9 @@ export async function getAllTasks(req: Request, res: Response) {
   // Build filter
   const filter: Record<string, any> = {};
 
+  // Hide completed tasks from the public browse list
+  filter.status = { $ne: "completed" };
+
   if (search && typeof search === "string") {
     const q = search.toLowerCase();
     filter.$or = [
@@ -46,6 +49,34 @@ export async function getAllTasks(req: Request, res: Response) {
 
   const tasks = await Task.find(filter).sort(sortOption).lean();
 
+  const normalized = tasks.map((t) => ({
+    ...t,
+    id: t._id.toString(),
+  }));
+
+  res.json({ tasks: normalized });
+}
+
+export async function getMyPostedTasks(req: Request, res: Response) {
+  // Returns all tasks the authenticated user has posted (including completed),
+  // so the poster can always see every task they created.
+  const filter: Record<string, any> = { posterId: req.userId };
+
+  const tasks = await Task.find(filter).sort({ createdAt: -1 }).lean();
+  const normalized = tasks.map((t) => ({
+    ...t,
+    id: t._id.toString(),
+  }));
+
+  res.json({ tasks: normalized });
+}
+
+export async function getMyWorkedTasks(req: Request, res: Response) {
+  // Returns all tasks the authenticated user has been assigned to work on
+  // (including completed), so a worker can see everything they finished.
+  const filter: Record<string, any> = { workerId: req.userId };
+
+  const tasks = await Task.find(filter).sort({ createdAt: -1 }).lean();
   const normalized = tasks.map((t) => ({
     ...t,
     id: t._id.toString(),
