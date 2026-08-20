@@ -88,6 +88,8 @@ export async function getMe(req: Request, res: Response) {
       role: user.role,
       phone: user.phone,
       location: user.location,
+      avatar: user.avatar || "",
+      portfolioImages: user.portfolioImages || [],
       rating: user.rating,
     },
   });
@@ -100,12 +102,33 @@ export async function updateMe(req: Request, res: Response) {
     return;
   }
 
-  const { name, phone, location, role, avatar } = req.body;
+  const { name, phone, location, role, avatar, portfolioImages } = req.body;
 
   if (name !== undefined) user.name = name;
   if (phone !== undefined) user.phone = phone;
   if (location !== undefined) user.location = location;
   if (avatar !== undefined) user.avatar = avatar;
+
+  // Validate and update portfolioImages when provided: array of up to 5
+  // image data URLs or http(s) URLs.
+  if (portfolioImages !== undefined) {
+    const isValidPortfolio =
+      Array.isArray(portfolioImages) &&
+      portfolioImages.length <= 5 &&
+      portfolioImages.every(
+        (img: unknown) =>
+          typeof img === "string" &&
+          (img.startsWith("data:image/") || /^https?:\/\//i.test(img)),
+      );
+    if (!isValidPortfolio) {
+      res.status(400).json({
+        error: "portfolioImages must be an array of up to 5 image data URLs or http(s) URLs.",
+      });
+      return;
+    }
+    user.portfolioImages = portfolioImages;
+  }
+
   if (role !== undefined) {
     if (!["customer", "tasker", "both", null].includes(role)) {
       res.status(400).json({ error: "Invalid role." });
@@ -124,7 +147,8 @@ export async function updateMe(req: Request, res: Response) {
       role: user.role,
       phone: user.phone,
       location: user.location,
-      avatar: user.avatar,
+      avatar: user.avatar || "",
+      portfolioImages: user.portfolioImages || [],
       rating: user.rating,
     },
   });

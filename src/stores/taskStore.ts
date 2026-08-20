@@ -31,7 +31,7 @@ interface TaskState {
   fetchTasks: (filters?: TaskFilters) => Promise<void>;
   fetchMyPostedTasks: () => Promise<Task[]>;
   fetchMyWorkedTasks: () => Promise<Task[]>;
-  addTask: (task: { title: string; category: string; description: string; budget: number; location: string; time: string; date: string }) => Promise<Task>;
+  addTask: (task: { title: string; category: string; description: string; budget: number; location: string; time: string; date: string; imageUrl?: string }) => Promise<Task>;
   updateTask: (id: string, data: Partial<Task>) => Promise<Task>;
   updateTaskStatus: (id: string, status: Task["status"]) => Promise<Task>;
   assignWorker: (id: string, workerId: string) => Promise<Task>;

@@ -112,6 +112,9 @@ export default function Home() {
                 time={task.time}
                 rating={task.rating}
                 imageUrl={task.imageUrl}
+                posterName={task.posterName}
+                posterId={task.posterId}
+                poster={task.posterAvatar}
               />
             ))}
           </div>

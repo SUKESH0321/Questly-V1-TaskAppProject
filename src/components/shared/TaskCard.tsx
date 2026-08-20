@@ -1,7 +1,10 @@
+import { type MouseEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapPin, Clock, Star } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface TaskCardProps {
   title: string;
@@ -11,6 +14,9 @@ interface TaskCardProps {
   time: string;
   rating: number;
   imageUrl?: string;
+  posterName?: string;
+  posterId?: string;
+  poster?: string;
 }
 
 export default function TaskCard({
@@ -21,6 +27,9 @@ export default function TaskCard({
   time,
   rating,
   imageUrl,
+  posterName,
+  posterId,
+  poster,
 }: TaskCardProps) {
   const safeTitle = title || "Untitled task";
   const safeCategory = category || "General";
@@ -28,6 +37,13 @@ export default function TaskCard({
   const safeDistance = distance || "Location unavailable";
   const safeTime = time || "Time TBD";
   const safeRating = typeof rating === "number" ? rating : 0;
+  const navigate = useNavigate();
+
+  const handlePosterClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!posterId) return;
+    navigate(`/profile/${posterId}`);
+  };
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all group border-border">
@@ -79,6 +95,35 @@ export default function TaskCard({
           </div>
         </div>
       </CardContent>
+
+      {posterName && (
+        <CardFooter className="p-4 pt-0 pb-3">
+          <button
+            type="button"
+            onClick={handlePosterClick}
+            className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Avatar className="h-6 w-6 border border-border">
+              <AvatarImage src={poster} />
+              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                {posterName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <span>
+              Posted by{" "}
+              <span className="font-semibold text-foreground group-hover:underline">
+                {posterName}
+              </span>
+            </span>
+          </button>
+        </CardFooter>
+      )}
+
       <CardFooter className="p-4 pt-0">
         <Button className="w-full">Apply Now</Button>
       </CardFooter>

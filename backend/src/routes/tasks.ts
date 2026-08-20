@@ -4,6 +4,7 @@ import {
   getMyPostedTasks,
   getMyWorkedTasks,
   getTaskById,
+  getTasksByPoster,
   createTask,
   updateTask,
   assignWorker,
@@ -16,6 +17,7 @@ router.get("/", getAllTasks);
 // Static routes must be declared before the "/:id" catch-all
 router.get("/posted", authMiddleware, getMyPostedTasks);
 router.get("/worked", authMiddleware, getMyWorkedTasks);
+router.get("/poster/:posterId", authMiddleware, getTasksByPoster);
 router.get("/:id", getTaskById);
 router.post("/", authMiddleware, createTask);
 router.patch("/:id", authMiddleware, updateTask);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect, type ChangeEvent } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useTaskStore } from "@/stores/taskStore";
 import { usePaymentStore } from "@/stores/paymentStore";
@@ -21,8 +21,11 @@ import {
   DollarSign,
   ShieldCheck,
   Briefcase,
+  Camera,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { readImageAsDataUrl } from "@/lib/imageUtils";
 
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuthStore();
@@ -34,6 +37,9 @@ export default function ProfilePage() {
   const [editPhone, setEditPhone] = useState(user?.phone || "");
   const [editLocation, setEditLocation] = useState(user?.location || "");
   const [earned, setEarned] = useState(0);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch the user's own posted and worked tasks (including completed),
   // plus payments on mount
@@ -67,6 +73,30 @@ export default function ProfilePage() {
     navigate("/login");
   };
 
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Please choose an image file (PNG or JPG).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("Image must be smaller than 5MB.");
+      return;
+    }
+    setIsUploadingAvatar(true);
+    setAvatarError(null);
+    try {
+      const dataUrl = await readImageAsDataUrl(file, 512);
+      await updateUser({ avatar: dataUrl });
+    } catch {
+      setAvatarError("We couldn't upload that image. Please try another one.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const initials = user?.name
     ?.split(" ")
     .map((n) => n[0])
@@ -98,6 +128,34 @@ export default function ProfilePage() {
               <AvatarImage src={user?.avatar} />
               <AvatarFallback className="text-2xl bg-primary/10 text-primary">{initials}</AvatarFallback>
             </Avatar>
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+              aria-label="Change profile photo"
+              className="absolute inset-0 rounded-full bg-black/55 opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer disabled:opacity-100"
+            >
+              {isUploadingAvatar ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <>
+                  <Camera size={18} />
+                  <span className="text-[10px] font-medium mt-0.5">Change</span>
+                </>
+              )}
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            {avatarError && (
+              <p className="text-xs text-destructive absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                {avatarError}
+              </p>
+            )}
             <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-accent flex items-center justify-center border-2 border-card">
               <CheckCircle2 size={14} className="text-accent-foreground" />
             </div>
