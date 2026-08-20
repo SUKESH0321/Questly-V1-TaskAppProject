@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,14 +6,16 @@ import {
   ArrowLeft,
   Check,
   Upload,
+  Loader2,
+  X,
   MapPin,
   Map,
   Calendar,
-  DollarSign,
   Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useTaskStore } from "@/stores/taskStore";
+import { readImageAsDataUrl } from "@/lib/imageUtils";
 
 const steps = ["Details", "Photos", "Location", "Budget", "Time", "Preview"];
 
@@ -25,6 +27,7 @@ interface TaskFormData {
   budget: number;
   time: string;
   date: string;
+  imageUrl: string;
 }
 
 export default function CreateTask() {
@@ -40,14 +43,51 @@ export default function CreateTask() {
     budget: 85,
     time: "ASAP",
     date: "Today",
+    imageUrl: "",
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateField = <K extends keyof TaskFormData>(
     key: K,
     value: TaskFormData[K],
   ) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setSubmitError("Please choose an image file (PNG, JPG, GIF or SVG).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setSubmitError("Image must be smaller than 5MB.");
+      return;
+    }
+    setIsProcessingImage(true);
+    setSubmitError(null);
+    try {
+      const dataUrl = await readImageAsDataUrl(file);
+      updateField("imageUrl", dataUrl);
+    } catch {
+      setSubmitError("We couldn't read that image. Please try another one.");
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) void handleImageFile(file);
+  };
+
+  const handleImageDrop = (e: DragEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) void handleImageFile(file);
   };
 
   const handleNext = async () => {
@@ -57,6 +97,7 @@ export default function CreateTask() {
     }
 
     setSubmitError(null);
+    setIsSubmitting(true);
 
     try {
       const newTask = {
@@ -67,6 +108,7 @@ export default function CreateTask() {
         location: formData.location || "123 Main St, New York",
         time: formData.time,
         date: formData.date || new Date().toISOString().split("T")[0],
+        ...(formData.imageUrl ? { imageUrl: formData.imageUrl } : {}),
       };
       const createdTask = await addTask(newTask);
       navigate(`/tasks/success?id=${createdTask.id}`);
@@ -74,8 +116,10 @@ export default function CreateTask() {
       const message =
         err instanceof Error
           ? err.message
-          : "We couldn’t create this task right now.";
+          : "We couldnâ€™t create this task right now.";
       setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -209,17 +253,69 @@ export default function CreateTask() {
               Photos help taskers understand what needs to be done.
             </p>
 
-            <div className="border-2 border-dashed border-border rounded-xl p-10 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors cursor-pointer group">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform mb-4">
-                <Upload size={28} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+
+            {formData.imageUrl ? (
+              <div className="relative rounded-xl overflow-hidden border border-border">
+                <img
+                  src={formData.imageUrl}
+                  alt="Task photo preview"
+                  className="w-full h-64 md:h-80 object-cover"
+                />
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isProcessingImage}
+                  >
+                    <Upload size={14} className="mr-1" />
+                    Change
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => updateField("imageUrl", "")}
+                  >
+                    <X size={14} className="mr-1" />
+                    Remove
+                  </Button>
+                </div>
               </div>
-              <h3 className="font-medium text-lg">
-                Click to upload or drag and drop
-              </h3>
-              <p className="text-muted-foreground text-sm mt-1">
-                SVG, PNG, JPG or GIF (max. 5MB)
-              </p>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleImageDrop}
+                disabled={isProcessingImage}
+                className="w-full border-2 border-dashed border-border rounded-xl p-10 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors cursor-pointer group disabled:opacity-60"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform mb-4">
+                  {isProcessingImage ? (
+                    <Loader2 size={28} className="animate-spin" />
+                  ) : (
+                    <Upload size={28} />
+                  )}
+                </div>
+                <h3 className="font-medium text-lg">
+                  {isProcessingImage
+                    ? "Processing image..."
+                    : "Click to upload or drag and drop"}
+                </h3>
+                <p className="text-muted-foreground text-sm mt-1">
+                  SVG, PNG, JPG or GIF (max. 5MB)
+                </p>
+              </button>
+            )}
           </div>
         )}
 
@@ -275,7 +371,7 @@ export default function CreateTask() {
                 <Badge className="absolute top-2 right-2 bg-accent/20 text-accent hover:bg-accent/20">
                   Suggested
                 </Badge>
-                <div className="text-3xl font-bold text-primary mb-2">₹85</div>
+                <div className="text-3xl font-bold text-primary mb-2">â‚¹85</div>
                 <div className="text-sm font-medium text-foreground">
                   Estimated Fair Price
                 </div>
@@ -285,7 +381,7 @@ export default function CreateTask() {
               </div>
 
               <div className="border border-border rounded-xl p-6 text-center flex flex-col justify-center items-center">
-                <DollarSign size={24} className="text-muted-foreground mb-2" />
+                <span className="text-3xl font-bold text-muted-foreground mb-2 leading-none">₹</span>
                 <div className="font-medium text-foreground mb-2">
                   Set custom budget
                 </div>
@@ -358,7 +454,7 @@ export default function CreateTask() {
                     Budget
                   </div>
                   <div className="font-medium text-primary">
-                    ₹{formData.budget}
+                    â‚¹{formData.budget}
                   </div>
                 </div>
                 <div>
@@ -385,6 +481,7 @@ export default function CreateTask() {
           size="lg"
           onClick={handleBack}
           className={currentStep === 0 ? "invisible" : ""}
+          disabled={isSubmitting}
         >
           Back
         </Button>
@@ -392,9 +489,13 @@ export default function CreateTask() {
           size="lg"
           onClick={handleNext}
           className="min-w-[120px]"
-          disabled={!canProceed()}
+          disabled={!canProceed() || isSubmitting}
         >
-          {currentStep === steps.length - 1 ? "Post Task" : "Continue"}
+          {isSubmitting
+            ? "Posting..."
+            : currentStep === steps.length - 1
+              ? "Post Task"
+              : "Continue"}
         </Button>
       </div>
     </div>

@@ -85,6 +85,34 @@ export async function getMyWorkedTasks(req: Request, res: Response) {
   res.json({ tasks: normalized });
 }
 
+export async function getTasksByPoster(req: Request, res: Response) {
+  const { posterId } = req.params;
+
+  if (!posterId || posterId === "undefined") {
+    res.status(400).json({ error: "A valid user id is required." });
+    return;
+  }
+
+  try {
+    // Only show open / in-progress tasks a user has posted publicly.
+    const tasks = await Task.find({
+      posterId,
+      status: { $ne: "completed" },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const normalized = tasks.map((t) => ({
+      ...t,
+      id: t._id.toString(),
+    }));
+
+    res.json({ tasks: normalized });
+  } catch {
+    res.status(400).json({ error: "A valid user id is required." });
+  }
+}
+
 export async function getTaskById(req: Request, res: Response) {
   const { id } = req.params;
 
@@ -106,11 +134,22 @@ export async function getTaskById(req: Request, res: Response) {
 }
 
 export async function createTask(req: Request, res: Response) {
-  const { title, description, category, budget, location, time, date } = req.body;
+  const { title, description, category, budget, location, time, date, imageUrl } = req.body;
 
   if (!title || !description || !category || !budget) {
     res.status(400).json({ error: "Title, description, category, and budget are required." });
     return;
+  }
+
+  // Validate imageUrl when provided: must be an image data URL or an http(s) URL.
+  if (imageUrl !== undefined) {
+    const isValidImage =
+      typeof imageUrl === "string" &&
+      (imageUrl.startsWith("data:image/") || /^https?:\/\//i.test(imageUrl));
+    if (!isValidImage) {
+      res.status(400).json({ error: "imageUrl must be a valid image data URL or http(s) URL." });
+      return;
+    }
   }
 
   const userId = req.userId!;
@@ -128,6 +167,7 @@ export async function createTask(req: Request, res: Response) {
     location: location || "123 Main St, New York",
     time: time || "ASAP",
     date: date || new Date().toISOString().split("T")[0],
+    imageUrl: imageUrl || "",
     posterId: userId,
     posterName: user.name,
     posterAvatar: user.avatar,
@@ -152,7 +192,7 @@ export async function updateTask(req: Request, res: Response) {
     return;
   }
 
-  const { title, description, category, budget, location, time, date, status } = req.body;
+  const { title, description, category, budget, location, time, date, status, imageUrl } = req.body;
   if (title !== undefined) task.title = title;
   if (description !== undefined) task.description = description;
   if (category !== undefined) task.category = category;
@@ -160,6 +200,18 @@ export async function updateTask(req: Request, res: Response) {
   if (location !== undefined) task.location = location;
   if (time !== undefined) task.time = time;
   if (date !== undefined) task.date = date;
+
+  // Validate and update imageUrl when provided.
+  if (imageUrl !== undefined) {
+    const isValidImage =
+      typeof imageUrl === "string" &&
+      (imageUrl.startsWith("data:image/") || /^https?:\/\//i.test(imageUrl));
+    if (!isValidImage) {
+      res.status(400).json({ error: "imageUrl must be a valid image data URL or http(s) URL." });
+      return;
+    }
+    task.imageUrl = imageUrl;
+  }
 
   // Validate status transitions
   if (status !== undefined) {

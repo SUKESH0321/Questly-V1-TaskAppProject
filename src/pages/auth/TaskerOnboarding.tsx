@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Upload, Briefcase, Camera } from "lucide-react";
+import { Check, Upload, Briefcase, Camera, Pencil, Loader2, X } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
+import { readImageAsDataUrl } from "@/lib/imageUtils";
 
 const steps = [
   "Personal",
@@ -26,13 +27,14 @@ interface OnboardingData {
   skills: string[];
   education: string;
   certificates: string;
-  experience: string;
   about: string;
   portfolioLink: string;
   workingDays: string[];
   startTime: string;
   endTime: string;
   travelRadius: number;
+  avatar: string;
+  portfolioImages: string[];
 }
 
 export default function TaskerOnboarding() {
@@ -47,14 +49,20 @@ export default function TaskerOnboarding() {
     skills: [],
     education: "",
     certificates: "",
-    experience: "0-1 years",
     about: "",
     portfolioLink: "",
     workingDays: [],
     startTime: "09:00",
     endTime: "17:00",
     travelRadius: 10,
+    avatar: "",
+    portfolioImages: [],
   });
+
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingPortfolio, setIsUploadingPortfolio] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const portfolioInputRef = useRef<HTMLInputElement>(null);
 
   const updateField = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setData((prev) => ({ ...prev, [key]: value }));
@@ -78,6 +86,60 @@ export default function TaskerOnboarding() {
     }));
   };
 
+  const handleAvatarFile = async (file: File) => {
+    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
+    setIsUploadingAvatar(true);
+    try {
+      const dataUrl = await readImageAsDataUrl(file, 512);
+      updateField("avatar", dataUrl);
+    } catch {
+      // Ignore files that can't be read.
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handlePortfolioFiles = async (files: FileList | File[]) => {
+    const fileList = Array.from(files);
+    const remaining = Math.max(0, 5 - data.portfolioImages.length);
+    const toProcess = fileList.slice(0, remaining);
+    if (toProcess.length === 0) return;
+
+    setIsUploadingPortfolio(true);
+    try {
+      const dataUrls: string[] = [];
+      for (const file of toProcess) {
+        if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) continue;
+        dataUrls.push(await readImageAsDataUrl(file));
+      }
+      updateField(
+        "portfolioImages",
+        [...data.portfolioImages, ...dataUrls].slice(0, 5),
+      );
+    } catch {
+      // Ignore files that can't be read.
+    } finally {
+      setIsUploadingPortfolio(false);
+    }
+  };
+
+  const handleAvatarSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) void handleAvatarFile(file);
+  };
+
+  const handlePortfolioSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    e.target.value = "";
+    if (files && files.length > 0) void handlePortfolioFiles(files);
+  };
+
+  const handlePortfolioDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) void handlePortfolioFiles(e.dataTransfer.files);
+  };
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(curr => curr + 1);
@@ -86,6 +148,8 @@ export default function TaskerOnboarding() {
         name: data.name,
         phone: data.phone,
         location: data.location,
+        ...(data.avatar ? { avatar: data.avatar } : {}),
+        portfolioImages: data.portfolioImages,
       });
       navigate("/home");
     }
@@ -140,12 +204,37 @@ export default function TaskerOnboarding() {
             
             <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-dashed border-border group hover:border-accent cursor-pointer transition-colors">
-                  <Camera className="text-muted-foreground group-hover:text-accent transition-colors" />
+                <div
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-dashed border-border group hover:border-accent cursor-pointer transition-colors"
+                >
+                  {data.avatar ? (
+                    <img
+                      src={data.avatar}
+                      alt="Profile preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : isUploadingAvatar ? (
+                    <Loader2 className="text-accent animate-spin" />
+                  ) : (
+                    <Camera className="text-muted-foreground group-hover:text-accent transition-colors" />
+                  )}
                 </div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground border-2 border-card cursor-pointer hover:bg-accent/90 transition-colors">
-                  <Upload size={14} />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground border-2 border-card cursor-pointer hover:bg-accent/90 transition-colors disabled:opacity-60"
+                >
+                  {data.avatar ? <Pencil size={14} /> : <Upload size={14} />}
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarSelect}
+                />
               </div>
             </div>
 
@@ -229,19 +318,6 @@ export default function TaskerOnboarding() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Years of Experience</label>
-                <select 
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  value={data.experience}
-                  onChange={(e) => updateField("experience", e.target.value)}
-                >
-                  <option>0-1 years</option>
-                  <option>1-3 years</option>
-                  <option>3-5 years</option>
-                  <option>5+ years</option>
-                </select>
-              </div>
-              <div>
                 <label className="text-sm font-medium mb-1 block">About Me</label>
                 <textarea 
                   className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[100px]"
@@ -262,13 +338,65 @@ export default function TaskerOnboarding() {
             </div>
             <p className="text-sm text-muted-foreground mb-4">Showcase your previous work.</p>
             
-            <div className="border-2 border-dashed border-accent/30 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-accent/5 transition-colors cursor-pointer group">
+            <input
+              ref={portfolioInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handlePortfolioSelect}
+            />
+
+            <div
+              onClick={() => portfolioInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handlePortfolioDrop}
+              className="border-2 border-dashed border-accent/30 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-accent/5 transition-colors cursor-pointer group"
+            >
               <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent group-hover:scale-110 transition-transform mb-4">
-                <Upload size={24} />
+                {isUploadingPortfolio ? (
+                  <Loader2 size={24} className="animate-spin" />
+                ) : (
+                  <Upload size={24} />
+                )}
               </div>
-              <h4 className="font-medium">Upload Images</h4>
-              <p className="text-muted-foreground text-xs mt-1">Add up to 5 photos of your work</p>
+              <h4 className="font-medium">
+                {isUploadingPortfolio ? "Processing images..." : "Upload Images"}
+              </h4>
+              <p className="text-muted-foreground text-xs mt-1">
+                Add up to 5 photos of your work ({data.portfolioImages.length}/5)
+              </p>
             </div>
+
+            {data.portfolioImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+                {data.portfolioImages.map((img, i) => (
+                  <div
+                    key={i}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-border group"
+                  >
+                    <img
+                      src={img}
+                      alt={`Portfolio photo ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Remove portfolio photo ${i + 1}`}
+                      onClick={() =>
+                        updateField(
+                          "portfolioImages",
+                          data.portfolioImages.filter((_, idx) => idx !== i),
+                        )
+                      }
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="mt-4">
               <label className="text-sm font-medium mb-1 block">Portfolio Link (Optional)</label>

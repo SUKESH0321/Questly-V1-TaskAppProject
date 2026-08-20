@@ -530,7 +530,15 @@ export default function TaskDetails() {
                     </div>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    safeTask.posterId === user?.id
+                      ? navigate("/profile")
+                      : navigate(`/profile/${safeTask.posterId}`)
+                  }
+                >
                   View Profile
                 </Button>
               </div>

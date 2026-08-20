@@ -14,6 +14,7 @@ import BrowseTasks from "@/pages/tasks/BrowseTasks";
 import TaskDetails from "@/pages/tasks/TaskDetails";
 import Home from "@/pages/Home";
 import ProfilePage from "@/pages/profile/ProfilePage";
+import PublicProfilePage from "@/pages/profile/PublicProfilePage";
 import MessagesPage from "@/pages/messages/MessagesPage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
 import NotFound from "@/pages/NotFound";
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "/tasks/success", element: <TaskSuccess /> },
       { path: "/tasks/:id", element: <TaskDetails /> },
       { path: "/profile", element: <ProfilePage /> },
+      { path: "/profile/:id", element: <PublicProfilePage /> },
       { path: "/messages", element: <MessagesPage /> },
       { path: "/notifications", element: <NotificationsPage /> },
     ],
